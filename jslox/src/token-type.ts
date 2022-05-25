@@ -46,4 +46,8 @@ export enum TokenType {
   WHILE,
 
   EOF,
+
+  // ternary operator
+  QUESTION,
+  COLON,
 }

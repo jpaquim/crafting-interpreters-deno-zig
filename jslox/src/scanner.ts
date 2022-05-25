@@ -82,6 +82,12 @@ export class Scanner {
       case '*':
         this.addToken(T.STAR);
         break;
+      case '?':
+        this.addToken(T.QUESTION);
+        break;
+      case ':':
+        this.addToken(T.COLON);
+        break;
       case '!':
         this.addToken(this.match('=') ? T.BANG_EQUAL : T.BANG);
         break;

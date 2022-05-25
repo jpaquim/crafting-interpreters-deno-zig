@@ -9,6 +9,7 @@ defineAst(outputDir, 'Expr', [
   'Binary   : left: Expr, operator: Token, right: Expr',
   'Grouping : expression: Expr',
   'Literal  : value: LiteralObject',
+  'Ternary   : predicate: Expr, left: Expr, right: Expr',
   'Unary    : operator: Token, right: Expr',
 ]);
 

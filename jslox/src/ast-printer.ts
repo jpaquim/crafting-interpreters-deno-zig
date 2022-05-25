@@ -1,4 +1,12 @@
-import { Binary, Expr, Grouping, Literal, Unary, Visitor } from './expr.ts';
+import {
+  Binary,
+  Expr,
+  Grouping,
+  Literal,
+  Ternary,
+  Unary,
+  Visitor,
+} from './expr.ts';
 
 export class AstPrinter implements Visitor<string> {
   print(expr: Expr): string {
@@ -16,6 +24,10 @@ export class AstPrinter implements Visitor<string> {
   visitLiteralExpr(expr: Literal): string {
     if (expr.value == null) return 'nil';
     return String(expr.value);
+  }
+
+  visitTernaryExpr(expr: Ternary): string {
+    return this.parenthesize('?:', expr.predicate, expr.left, expr.right);
   }
 
   visitUnaryExpr(expr: Unary): string {

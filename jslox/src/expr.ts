@@ -8,6 +8,7 @@ export interface Visitor<R> {
   visitBinaryExpr(expr: Binary): R;
   visitGroupingExpr(expr: Grouping): R;
   visitLiteralExpr(expr: Literal): R;
+  visitTernaryExpr(expr: Ternary): R;
   visitUnaryExpr(expr: Unary): R;
 }
 
@@ -52,6 +53,23 @@ export class Literal extends Expr {
   }
 
   value: LiteralObject;
+}
+
+export class Ternary extends Expr {
+  constructor(predicate: Expr, left: Expr, right: Expr) {
+    super();
+    this.predicate = predicate;
+    this.left = left;
+    this.right = right;
+  }
+
+  override accept<R>(visitor: Visitor<R>): R {
+    return visitor.visitTernaryExpr(this);
+  }
+
+  predicate: Expr;
+  left: Expr;
+  right: Expr;
 }
 
 export class Unary extends Expr {

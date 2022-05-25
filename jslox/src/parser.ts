@@ -1,4 +1,4 @@
-import { Binary, Expr, Grouping, Literal, Unary } from './expr.ts';
+import { Binary, Expr, Grouping, Literal, Ternary, Unary } from './expr.ts';
 import { error } from './mod.ts';
 import { Token } from './token.ts';
 import { TokenType } from './token-type.ts';
@@ -15,25 +15,36 @@ export class Parser {
 
   parse(): Expr | null {
     try {
-      return this.expression();
+      return this.comma();
     } catch (error) {
       if (error instanceof ParseError) return null;
       throw error;
     }
   }
 
-  expression(): Expr {
-    return this.comma();
-  }
-
   comma(): Expr {
-    let expr = this.equality();
+    let expr = this.expression();
     while (this.match(T.COMMA)) {
       const operator = this.previous();
-      const right = this.equality();
+      const right = this.expression();
       expr = new Binary(expr, operator, right);
     }
 
+    return expr;
+  }
+
+  expression(): Expr {
+    return this.ternary();
+  }
+
+  ternary(): Expr {
+    const expr = this.equality();
+    if (this.match(T.QUESTION)) {
+      const left = this.equality();
+      this.consume(T.COLON, "Expect ':' after '?' left expression");
+      const right = this.ternary();
+      return new Ternary(expr, left, right);
+    }
     return expr;
   }
 
