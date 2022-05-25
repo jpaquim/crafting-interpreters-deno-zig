@@ -1,6 +1,4 @@
 import { Binary, Expr, Grouping, Literal, Unary, Visitor } from './expr.ts';
-import { Token } from './token.ts';
-import { TokenType } from './token-type.ts';
 
 export class AstPrinter implements Visitor<string> {
   print(expr: Expr): string {
@@ -33,10 +31,13 @@ export class AstPrinter implements Visitor<string> {
   }
 }
 
-const expression = new Binary(
-  new Unary(new Token(TokenType.MINUS, '-', null, 1), new Literal(123)),
-  new Token(TokenType.STAR, '*', null, 1),
-  new Grouping(new Literal(45.67)),
-);
+// import { Token } from './token.ts';
+// import { TokenType } from './token-type.ts';
 
-console.log(new AstPrinter().print(expression));
+// const expression = new Binary(
+//   new Unary(new Token(TokenType.MINUS, '-', null, 1), new Literal(123)),
+//   new Token(TokenType.STAR, '*', null, 1),
+//   new Grouping(new Literal(45.67)),
+// );
+
+// console.log(new AstPrinter().print(expression));
