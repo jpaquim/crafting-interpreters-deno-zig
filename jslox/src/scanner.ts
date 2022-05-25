@@ -5,6 +5,25 @@ import { TokenType } from './token-type.ts';
 const T = TokenType;
 
 export class Scanner {
+  static keywords = new Map<string, TokenType>([
+    ['and', T.AND],
+    ['class', T.CLASS],
+    ['else', T.ELSE],
+    ['false', T.FALSE],
+    ['for', T.FOR],
+    ['fun', T.FUN],
+    ['if', T.IF],
+    ['nil', T.NIL],
+    ['or', T.OR],
+    ['print', T.PRINT],
+    ['return', T.RETURN],
+    ['super', T.SUPER],
+    ['this', T.THIS],
+    ['true', T.TRUE],
+    ['var', T.VAR],
+    ['while', T.WHILE],
+  ]);
+
   source: string;
   tokens: Token[] = [];
 
@@ -90,11 +109,21 @@ export class Scanner {
       default:
         if (this.isDigit(c)) {
           this.number();
+        } else if (this.isAlpha(c)) {
+          this.identifier();
         } else {
           error(this.line, 'Unexpected character.');
         }
         break;
     }
+  }
+
+  identifier(): void {
+    while (this.isAlphaNumeric(this.peek())) this.advance();
+
+    const text = this.source.substring(this.start, this.current);
+    const type = Scanner.keywords.get(text) ?? T.IDENTIFIER;
+    this.addToken(type);
   }
 
   number(): void {
@@ -154,6 +183,14 @@ export class Scanner {
   peekNext(): string {
     if (this.current + 1 >= this.source.length) return '\0';
     return this.source[this.current + 1];
+  }
+
+  isAlpha(c: string) {
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
+  }
+
+  isAlphaNumeric(c: string) {
+    return this.isAlpha(c) || this.isDigit(c);
   }
 
   isDigit(c: string): boolean {
