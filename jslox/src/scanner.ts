@@ -88,9 +88,45 @@ export class Scanner {
         this.string();
         break;
       default:
-        error(this.line, 'Unexpected character.');
+        if (this.isDigit(c)) {
+          this.number();
+        } else {
+          error(this.line, 'Unexpected character.');
+        }
         break;
     }
+  }
+
+  number(): void {
+    while (this.isDigit(this.peek())) this.advance();
+
+    if (this.peek() == '.' && this.isDigit(this.peekNext())) {
+      this.advance();
+
+      while (this.isDigit(this.peek())) this.advance();
+    }
+
+    this.addToken(
+      T.NUMBER,
+      Number.parseFloat(this.source.substring(this.start, this.current)),
+    );
+  }
+
+  string(): void {
+    while (this.peek() != '"' && !this.isAtEnd()) {
+      if (this.peek() == '\n') this.line++;
+      this.advance();
+    }
+
+    if (this.isAtEnd()) {
+      error(this.line, 'Unterminated string.');
+      return;
+    }
+
+    this.advance();
+
+    const value = this.source.substring(this.start + 1, this.current - 1);
+    this.addToken(T.STRING, value);
   }
 
   advance(): string {
@@ -115,20 +151,12 @@ export class Scanner {
     return this.source[this.current];
   }
 
-  string(): void {
-    while (this.peek() != '"' && !this.isAtEnd()) {
-      if (this.peek() == '\n') this.line++;
-      this.advance();
-    }
+  peekNext(): string {
+    if (this.current + 1 >= this.source.length) return '\0';
+    return this.source[this.current + 1];
+  }
 
-    if (this.isAtEnd()) {
-      error(this.line, 'Unterminated string.');
-      return;
-    }
-
-    this.advance();
-
-    const value = this.source.substring(this.start + 1, this.current - 1);
-    this.addToken(T.STRING, value);
+  isDigit(c: string): boolean {
+    return c >= '0' && c <= '9';
   }
 }

@@ -1,6 +1,6 @@
 import { TokenType } from './token-type.ts';
 
-export type Literal = string | null;
+export type Literal = number | string | null;
 
 export class Token {
   type: TokenType;
