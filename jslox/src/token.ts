@@ -1,14 +1,19 @@
 import { TokenType } from './token-type.ts';
 
-export type Literal = number | string | null;
+export type LiteralObject = number | string | null;
 
 export class Token {
   type: TokenType;
   lexeme: string;
-  literal: Literal;
+  literal: LiteralObject;
   line: number;
 
-  constructor(type: TokenType, lexeme: string, literal: Literal, line: number) {
+  constructor(
+    type: TokenType,
+    lexeme: string,
+    literal: LiteralObject,
+    line: number,
+  ) {
     this.type = type;
     this.lexeme = lexeme;
     this.literal = literal;

@@ -1,5 +1,5 @@
 import { error } from './mod.ts';
-import { Token, type Literal } from './token.ts';
+import { Token, type LiteralObject } from './token.ts';
 import { TokenType } from './token-type.ts';
 
 const T = TokenType;
@@ -121,7 +121,7 @@ export class Scanner {
   identifier(): void {
     while (this.isAlphaNumeric(this.peek())) this.advance();
 
-    const text = this.source.substring(this.start, this.current);
+    const text = this.source.slice(this.start, this.current);
     const type = Scanner.keywords.get(text) ?? T.IDENTIFIER;
     this.addToken(type);
   }
@@ -137,7 +137,7 @@ export class Scanner {
 
     this.addToken(
       T.NUMBER,
-      Number.parseFloat(this.source.substring(this.start, this.current)),
+      Number.parseFloat(this.source.slice(this.start, this.current)),
     );
   }
 
@@ -154,7 +154,7 @@ export class Scanner {
 
     this.advance();
 
-    const value = this.source.substring(this.start + 1, this.current - 1);
+    const value = this.source.slice(this.start + 1, this.current - 1);
     this.addToken(T.STRING, value);
   }
 
@@ -162,8 +162,8 @@ export class Scanner {
     return this.source[this.current++];
   }
 
-  addToken(type: TokenType, literal: Literal = null): void {
-    const text = this.source.substring(this.start, this.current);
+  addToken(type: TokenType, literal: LiteralObject = null): void {
+    const text = this.source.slice(this.start, this.current);
     this.tokens.push(new Token(type, text, literal, this.line));
   }
 
