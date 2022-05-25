@@ -63,6 +63,27 @@ export class Scanner {
       case '*':
         this.addToken(T.STAR);
         break;
+      case '!':
+        this.addToken(this.match('=') ? T.BANG_EQUAL : T.BANG);
+        break;
+      case '=':
+        this.addToken(this.match('=') ? T.EQUAL_EQUAL : T.EQUAL);
+        break;
+      case '<':
+        this.addToken(this.match('=') ? T.LESS_EQUAL : T.LESS);
+        break;
+      case '>':
+        this.addToken(this.match('=') ? T.GREATER_EQUAL : T.GREATER);
+        break;
+      case '/':
+        if (this.match('/')) {
+          while (this.peek() != '\n' && !this.isAtEnd()) this.advance();
+        } else this.addToken(T.SLASH);
+        break;
+      case ' ':
+      case '\r':
+      case '\t':
+        break;
       default:
         error(this.line, 'Unexpected character.');
         break;
@@ -76,5 +97,18 @@ export class Scanner {
   addToken(type: TokenType, literal: object | null = null): void {
     const text = this.source.substring(this.start, this.current);
     this.tokens.push(new Token(type, text, literal, this.line));
+  }
+
+  match(expected: string): boolean {
+    if (this.isAtEnd()) return false;
+    if (this.source[this.current] != expected) return false;
+
+    this.current++;
+    return true;
+  }
+
+  peek(): string {
+    if (this.isAtEnd()) return '\0';
+    return this.source[this.current];
   }
 }
