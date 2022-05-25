@@ -1,6 +1,7 @@
 import { error } from './mod.ts';
-import { Token, type LiteralObject } from './token.ts';
+import { Token } from './token.ts';
 import { TokenType } from './token-type.ts';
+import type { PlainObject } from './types.ts';
 
 const T = TokenType;
 
@@ -135,7 +136,7 @@ export class Scanner {
   number(): void {
     while (this.isDigit(this.peek())) this.advance();
 
-    if (this.peek() == '.' && this.isDigit(this.peekNext())) {
+    if (this.peek() === '.' && this.isDigit(this.peekNext())) {
       this.advance();
 
       while (this.isDigit(this.peek())) this.advance();
@@ -149,7 +150,7 @@ export class Scanner {
 
   string(): void {
     while (this.peek() != '"' && !this.isAtEnd()) {
-      if (this.peek() == '\n') this.line++;
+      if (this.peek() === '\n') this.line++;
       this.advance();
     }
 
@@ -168,7 +169,7 @@ export class Scanner {
     return this.source[this.current++];
   }
 
-  addToken(type: TokenType, literal: LiteralObject = null): void {
+  addToken(type: TokenType, literal: PlainObject = null): void {
     const text = this.source.slice(this.start, this.current);
     this.tokens.push(new Token(type, text, literal, this.line));
   }
@@ -192,7 +193,7 @@ export class Scanner {
   }
 
   isAlpha(c: string) {
-    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c === '_';
   }
 
   isAlphaNumeric(c: string) {

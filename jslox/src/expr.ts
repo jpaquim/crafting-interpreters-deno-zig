@@ -1,4 +1,5 @@
-import { LiteralObject, Token } from '../src/token.ts';
+import type { Token } from '../src/token.ts';
+import type { PlainObject } from '../src/types.ts';
 
 export abstract class Expr {
   abstract accept<R>(visitor: Visitor<R>): R;
@@ -43,7 +44,7 @@ export class Grouping extends Expr {
 }
 
 export class Literal extends Expr {
-  constructor(value: LiteralObject) {
+  constructor(value: PlainObject) {
     super();
     this.value = value;
   }
@@ -52,7 +53,7 @@ export class Literal extends Expr {
     return visitor.visitLiteralExpr(this);
   }
 
-  value: LiteralObject;
+  value: PlainObject;
 }
 
 export class Ternary extends Expr {

@@ -1,17 +1,16 @@
 import { TokenType } from './token-type.ts';
-
-export type LiteralObject = boolean | number | string | null;
+import type { PlainObject } from './types.ts';
 
 export class Token {
   type: TokenType;
   lexeme: string;
-  literal: LiteralObject;
+  literal: PlainObject;
   line: number;
 
   constructor(
     type: TokenType,
     lexeme: string,
-    literal: LiteralObject,
+    literal: PlainObject,
     line: number,
   ) {
     this.type = type;

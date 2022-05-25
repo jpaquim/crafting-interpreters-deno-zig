@@ -8,7 +8,7 @@ const outputDir = args[0];
 defineAst(outputDir, 'Expr', [
   'Binary   : left: Expr, operator: Token, right: Expr',
   'Grouping : expression: Expr',
-  'Literal  : value: LiteralObject',
+  'Literal  : value: PlainObject',
   'Ternary   : predicate: Expr, left: Expr, right: Expr',
   'Unary    : operator: Token, right: Expr',
 ]);
@@ -20,9 +20,10 @@ function defineAst(outputDir: string, baseName: string, types: string[]): void {
   const encoder = new TextEncoder();
 
   writer.write(
-    encoder.encode(
-      `import { LiteralObject, Token } from '../src/token.ts';\n\n`,
-    ),
+    encoder.encode(`import type { Token } from '../src/token.ts';\n`),
+  );
+  writer.write(
+    encoder.encode(`import type { PlainObject } from '../src/types.ts';\n\n`),
   );
   writer.write(
     encoder.encode(`export abstract class ${baseName} {

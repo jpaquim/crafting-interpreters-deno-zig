@@ -22,7 +22,7 @@ export class AstPrinter implements Visitor<string> {
   }
 
   visitLiteralExpr(expr: Literal): string {
-    if (expr.value == null) return 'nil';
+    if (expr.value === null) return 'nil';
     return String(expr.value);
   }
 
