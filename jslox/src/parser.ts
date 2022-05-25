@@ -23,7 +23,18 @@ export class Parser {
   }
 
   expression(): Expr {
-    return this.equality();
+    return this.comma();
+  }
+
+  comma(): Expr {
+    let expr = this.equality();
+    while (this.match(T.COMMA)) {
+      const operator = this.previous();
+      const right = this.equality();
+      expr = new Binary(expr, operator, right);
+    }
+
+    return expr;
   }
 
   equality(): Expr {
