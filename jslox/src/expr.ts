@@ -11,6 +11,7 @@ export interface Visitor<R> {
   visitLiteralExpr(expr: Literal): R;
   visitTernaryExpr(expr: Ternary): R;
   visitUnaryExpr(expr: Unary): R;
+  visitVariableExpr(expr: Variable): R;
 }
 
 export class Binary extends Expr {
@@ -86,4 +87,17 @@ export class Unary extends Expr {
 
   operator: Token;
   right: Expr;
+}
+
+export class Variable extends Expr {
+  constructor(name: Token) {
+    super();
+    this.name = name;
+  }
+
+  override accept<R>(visitor: Visitor<R>): R {
+    return visitor.visitVariableExpr(this);
+  }
+
+  name: Token;
 }

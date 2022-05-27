@@ -9,13 +9,15 @@ defineAst(outputDir, 'Expr', [
   'Binary   : left: Expr, operator: Token, right: Expr',
   'Grouping : expression: Expr',
   'Literal  : value: PlainObject',
-  'Ternary   : predicate: Expr, left: Expr, right: Expr',
+  'Ternary  : predicate: Expr, left: Expr, right: Expr',
   'Unary    : operator: Token, right: Expr',
+  'Variable : name: Token',
 ]);
 
 defineAst(outputDir, 'Stmt', [
   'Expression : expression: Expr',
   'Print      : expression: Expr',
+  'Var        : name: Token, initializer: Expr | null',
 ]);
 
 function defineAst(outputDir: string, baseName: string, types: string[]): void {
@@ -129,7 +131,7 @@ function defineTypeImports(
       const fields = type
         .slice(separatorIndex + 1)
         .split(', ')
-        .map(field => field.split(': ')[1].trim());
+        .map(field => field.split(':')[1].split('|')[0].trim());
       for (const field of fields.filter(field => field !== baseName)) {
         importsSet.add(field);
       }
@@ -138,6 +140,7 @@ function defineTypeImports(
   ];
 
   for (const type of imports) {
+    if (!typeImports[type]) throw new Error(`Unknown type: ${type}`);
     writer.write(
       encoder.encode(`import type { ${type} } from '${typeImports[type]}';\n`),
     );

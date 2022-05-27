@@ -1,6 +1,14 @@
-import { Binary, Expr, Grouping, Literal, Ternary, Unary } from './expr.ts';
+import {
+  Binary,
+  Expr,
+  Grouping,
+  Literal,
+  Ternary,
+  Unary,
+  Variable,
+} from './expr.ts';
 import { error } from './mod.ts';
-import { Expression, Print, Stmt } from './stmt.ts';
+import { Expression, Print, Stmt, Var } from './stmt.ts';
 import { Token } from './token.ts';
 import { TokenType } from './token-type.ts';
 
@@ -17,10 +25,23 @@ export class Parser {
   parse(): Stmt[] {
     const statements: Stmt[] = [];
     while (!this.isAtEnd()) {
-      statements.push(this.statement());
+      statements.push(this.declaration() as Stmt);
     }
 
     return statements;
+  }
+
+  declaration(): Stmt | null {
+    try {
+      if (this.match(T.VAR)) return this.varDeclaration();
+
+      return this.statement();
+    } catch (error) {
+      if (error instanceof ParseError) {
+        this.synchronize();
+        return null;
+      } else throw error;
+    }
   }
 
   statement(): Stmt {
@@ -29,16 +50,28 @@ export class Parser {
     return this.expressionStatement();
   }
 
+  expressionStatement(): Stmt {
+    const value = this.comma();
+    this.consume(T.SEMICOLON, "Expect ';' after expression.");
+    return new Expression(value);
+  }
+
   printStatement(): Stmt {
     const value = this.expression();
     this.consume(T.SEMICOLON, "Expect ';' after value.");
     return new Print(value);
   }
 
-  expressionStatement(): Stmt {
-    const value = this.comma();
-    this.consume(T.SEMICOLON, "Expect ';' after expression.");
-    return new Expression(value);
+  varDeclaration(): Stmt {
+    const name = this.consume(T.IDENTIFIER, 'Expect variable name.');
+
+    let initializer = null;
+    if (this.match(T.EQUAL)) {
+      initializer = this.expression();
+    }
+
+    this.consume(T.SEMICOLON, "Expect ';' after variable declaration.");
+    return new Var(name, initializer);
   }
 
   comma(): Expr {
@@ -128,6 +161,10 @@ export class Parser {
 
     if (this.match(T.NUMBER, T.STRING)) {
       return new Literal(this.previous().literal);
+    }
+
+    if (this.match(T.IDENTIFIER)) {
+      return new Variable(this.previous());
     }
 
     if (this.match(T.LEFT_PAREN)) {
