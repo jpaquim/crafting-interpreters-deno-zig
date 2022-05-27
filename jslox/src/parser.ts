@@ -9,7 +9,7 @@ import {
   Variable,
 } from './expr.ts';
 import { error } from './mod.ts';
-import { Block, Expression, Print, Stmt, Var } from './stmt.ts';
+import { Block, Expression, If, Print, Stmt, Var } from './stmt.ts';
 import { Token } from './token.ts';
 import { TokenType } from './token-type.ts';
 
@@ -49,10 +49,25 @@ export class Parser {
   }
 
   statement(): Stmt {
+    if (this.match(T.IF)) return this.ifStatement();
     if (this.match(T.PRINT)) return this.printStatement();
     if (this.match(T.LEFT_BRACE)) return new Block(this.block());
 
     return this.expressionStatement();
+  }
+
+  ifStatement(): Stmt {
+    this.consume(T.LEFT_PAREN, "Expect '(' after 'if'.");
+    const condition = this.expression();
+    this.consume(T.RIGHT_PAREN, "Expect ')' after if condition.");
+
+    const thenBranch = this.statement();
+    let elseBranch;
+    if (this.match(T.ELSE)) {
+      elseBranch = this.statement();
+    }
+
+    return new If(condition, thenBranch, elseBranch);
   }
 
   expressionStatement(): Stmt {

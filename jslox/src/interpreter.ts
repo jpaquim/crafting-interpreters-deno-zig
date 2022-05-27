@@ -13,6 +13,7 @@ import type {
 import type {
   Block,
   Expression,
+  If,
   Print,
   Stmt,
   Var,
@@ -178,6 +179,14 @@ export class Interpreter
 
   visitExpressionStmt(stmt: Expression): void {
     this.evaluate(stmt.expression);
+  }
+
+  visitIfStmt(stmt: If): void {
+    if (this.isTruthy(this.evaluate(stmt.condition))) {
+      this.execute(stmt.thenBranch);
+    } else if (stmt.elseBranch) {
+      this.execute(stmt.elseBranch);
+    }
   }
 
   visitPrintStmt(stmt: Print): void {
