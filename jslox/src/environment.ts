@@ -4,17 +4,17 @@ import type { PlainObject } from './types.ts';
 
 export class Environment {
   enclosing: Environment | null;
-  values = new Map<string, PlainObject>();
+  values = new Map<string, PlainObject | undefined>();
 
   constructor(enclosing?: Environment | null) {
     this.enclosing = enclosing ?? null;
   }
 
-  define(name: string, value: PlainObject): void {
+  define(name: string, value: PlainObject | undefined): void {
     this.values.set(name, value);
   }
 
-  get(name: Token): PlainObject {
+  get(name: Token): PlainObject | undefined {
     if (this.values.has(name.lexeme)) {
       return this.values.get(name.lexeme);
     }

@@ -85,7 +85,7 @@ export class Parser {
   varDeclaration(): Stmt {
     const name = this.consume(T.IDENTIFIER, 'Expect variable name.');
 
-    let initializer = null;
+    let initializer;
     if (this.match(T.EQUAL)) {
       initializer = this.expression();
     }

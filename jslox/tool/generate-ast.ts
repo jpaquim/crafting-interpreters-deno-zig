@@ -19,7 +19,7 @@ defineAst(outputDir, 'Stmt', [
   'Block      : statements: Stmt[]',
   'Expression : expression: Expr',
   'Print      : expression: Expr',
-  'Var        : name: Token, initializer: Expr | null',
+  'Var        : name: Token, initializer?: Expr',
 ]);
 
 function defineAst(outputDir: string, baseName: string, types: string[]): void {
@@ -67,7 +67,7 @@ function defineType(
 
   const fields = fieldList.split(', ');
   for (const field of fields) {
-    const name = field.split(':')[0];
+    const name = field.split(':')[0].split('?')[0];
     writer.write(encoder.encode(`    this.${name} = ${name};\n`));
   }
 

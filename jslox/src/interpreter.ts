@@ -187,8 +187,9 @@ export class Interpreter
 
   visitVarStmt(stmt: Var): void {
     let value;
-    if (stmt.initializer != null) {
-      value = this.evaluate(stmt.initializer);
+    const initializer = stmt.initializer;
+    if (initializer !== undefined) {
+      value = this.evaluate(initializer);
     }
 
     this.environment.define(stmt.name.lexeme, value);
