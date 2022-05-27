@@ -10,6 +10,7 @@ export interface Visitor<R> {
   visitBreakStmt(stmt: Break): R;
   visitContinueStmt(stmt: Continue): R;
   visitExpressionStmt(stmt: Expression): R;
+  visitFunctionStmt(stmt: Function): R;
   visitIfStmt(stmt: If): R;
   visitPrintStmt(stmt: Print): R;
   visitVarStmt(stmt: Var): R;
@@ -53,6 +54,23 @@ export class Expression extends Stmt {
 
   override accept<R>(visitor: Visitor<R>): R {
     return visitor.visitExpressionStmt(this);
+  }
+}
+
+export class Function extends Stmt {
+  name: Token;
+  params: Token[];
+  body: Stmt[];
+
+  constructor(name: Token, params: Token[], body: Stmt[]) {
+    super();
+    this.name = name;
+    this.params = params;
+    this.body = body;
+  }
+
+  override accept<R>(visitor: Visitor<R>): R {
+    return visitor.visitFunctionStmt(this);
   }
 }
 

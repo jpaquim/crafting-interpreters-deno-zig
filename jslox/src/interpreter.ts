@@ -18,6 +18,7 @@ import type {
   Break,
   Continue,
   Expression,
+  Function,
   If,
   Print,
   Stmt,
@@ -26,6 +27,7 @@ import type {
   While,
 } from './stmt.ts';
 import { runtimeError } from './mod.ts';
+import { LoxFunction } from './lox-function.ts';
 import { RuntimeError } from './runtime-error.ts';
 import type { Token } from './token.ts';
 import { TokenType } from './token-type.ts';
@@ -250,6 +252,11 @@ export class Interpreter implements ExprVisitor<LoxObject>, StmtVisitor<void> {
 
   visitExpressionStmt(stmt: Expression): void {
     this.evaluate(stmt.expression);
+  }
+
+  visitFunctionStmt(stmt: Function): void {
+    const fn = new LoxFunction(stmt);
+    this.environment.define(stmt.name.lexeme, fn);
   }
 
   visitIfStmt(stmt: If): void {

@@ -16,6 +16,7 @@ import {
   Break,
   Continue,
   Expression,
+  Function,
   If,
   Print,
   Stmt,
@@ -50,6 +51,7 @@ export class Parser {
 
   declaration(): Stmt | null {
     try {
+      if (this.match(T.FUN)) return this.function('function');
       if (this.match(T.VAR)) return this.varDeclaration();
 
       return this.statement();
@@ -158,6 +160,26 @@ export class Parser {
 
     this.consume(T.SEMICOLON, "Expect ';' after expression.");
     return new Expression(value);
+  }
+
+  function(kind: string): Function {
+    const name = this.consume(T.IDENTIFIER, `Expect ${kind} name.`);
+    this.consume(T.LEFT_PAREN, `Expect '(' after ${kind} name.`);
+    const parameters = [];
+    if (!this.check(T.RIGHT_PAREN)) {
+      do {
+        if (parameters.length >= 255) {
+          this.error(this.peek(), "Can't have more than 255 parameters");
+        }
+
+        parameters.push(this.consume(T.IDENTIFIER, 'Expect parameter name.'));
+      } while (this.match(T.COMMA));
+    }
+    this.consume(T.RIGHT_PAREN, "Expect ')' after parameters.");
+
+    this.consume(T.LEFT_BRACE, `Expect '{' before ${kind} body.`);
+    const body = this.block();
+    return new Function(name, parameters, body);
   }
 
   block(): Stmt[] {

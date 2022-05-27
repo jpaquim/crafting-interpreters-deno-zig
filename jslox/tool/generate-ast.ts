@@ -22,6 +22,7 @@ defineAst(outputDir, 'Stmt', [
   'Break      : ',
   'Continue   : ',
   'Expression : expression: Expr',
+  'Function   : name: Token, params: Token[], body: Stmt[]',
   'If         : condition: Expr, thenBranch: Stmt, elseBranch?: Stmt',
   'Print      : expression: Expr',
   'Var        : name: Token, initializer?: Expr',
