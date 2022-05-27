@@ -19,8 +19,11 @@ export class Parser {
   tokens: Token[];
   current = 0;
 
-  constructor(tokens: Token[]) {
+  repl: boolean;
+
+  constructor(tokens: Token[], repl: boolean) {
     this.tokens = tokens;
+    this.repl = repl;
   }
 
   parse(): Stmt[] {
@@ -54,6 +57,11 @@ export class Parser {
 
   expressionStatement(): Stmt {
     const value = this.comma();
+
+    if (this.repl && !this.check(T.SEMICOLON)) {
+      return new Print(value);
+    }
+
     this.consume(T.SEMICOLON, "Expect ';' after expression.");
     return new Expression(value);
   }

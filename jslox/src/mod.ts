@@ -34,15 +34,15 @@ function runPrompt(): void {
   while (true) {
     const line = prompt('> ');
     if (line === null) break;
-    run(line);
+    run(line, true);
     hadError = false;
   }
 }
 
-function run(source: string): void {
+function run(source: string, repl = false): void {
   const scanner = new Scanner(source);
   const tokens = scanner.scanTokens();
-  const parser = new Parser(tokens);
+  const parser = new Parser(tokens, repl);
   const statements = parser.parse();
 
   if (hadError) return;
