@@ -1,4 +1,5 @@
 import {
+  Assign,
   Binary,
   Expr,
   Grouping,
@@ -86,7 +87,25 @@ export class Parser {
   }
 
   expression(): Expr {
-    return this.ternary();
+    return this.assignment();
+  }
+
+  assignment(): Expr {
+    const expr = this.ternary();
+
+    if (this.match(T.EQUAL)) {
+      const equals = this.previous();
+      const value = this.assignment();
+
+      if (expr instanceof Variable) {
+        const name = expr.name;
+        return new Assign(name, value);
+      }
+
+      this.error(equals, 'Invalid assignment target.');
+    }
+
+    return expr;
   }
 
   ternary(): Expr {

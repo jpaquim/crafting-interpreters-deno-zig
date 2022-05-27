@@ -6,12 +6,28 @@ export abstract class Expr {
 }
 
 export interface Visitor<R> {
+  visitAssignExpr(expr: Assign): R;
   visitBinaryExpr(expr: Binary): R;
   visitGroupingExpr(expr: Grouping): R;
   visitLiteralExpr(expr: Literal): R;
   visitTernaryExpr(expr: Ternary): R;
   visitUnaryExpr(expr: Unary): R;
   visitVariableExpr(expr: Variable): R;
+}
+
+export class Assign extends Expr {
+  constructor(name: Token, value: Expr) {
+    super();
+    this.name = name;
+    this.value = value;
+  }
+
+  override accept<R>(visitor: Visitor<R>): R {
+    return visitor.visitAssignExpr(this);
+  }
+
+  name: Token;
+  value: Expr;
 }
 
 export class Binary extends Expr {

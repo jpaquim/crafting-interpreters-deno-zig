@@ -1,5 +1,6 @@
 import { Environment } from './environment.ts';
 import type {
+  Assign,
   Binary,
   Expr,
   Grouping,
@@ -171,6 +172,12 @@ export class Interpreter
     }
 
     this.environment.define(stmt.name.lexeme, value);
+  }
+
+  visitAssignExpr(expr: Assign): PlainObject {
+    const value = this.evaluate(expr.value);
+    this.environment.assign(expr.name, value);
+    return value;
   }
 
   isTruthy(object: PlainObject): boolean {
