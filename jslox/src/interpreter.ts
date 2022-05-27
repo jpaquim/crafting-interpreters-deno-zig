@@ -34,7 +34,30 @@ import type { LoxObject } from './types.ts';
 const T = TokenType;
 
 export class Interpreter implements ExprVisitor<LoxObject>, StmtVisitor<void> {
-  environment = new Environment();
+  globals = new Environment();
+  environment = this.globals;
+
+  constructor() {
+    this.globals.define(
+      'clock',
+      new (class extends Callable {
+        override arity(): number {
+          return 0;
+        }
+
+        override call(
+          _interpreter: Interpreter,
+          _args: LoxObject[],
+        ): LoxObject {
+          return Date.now() / 1000;
+        }
+
+        override toString(): string {
+          return '<native fn>';
+        }
+      })(),
+    );
+  }
 
   interpret(statements: Stmt[]) {
     try {
