@@ -5,6 +5,7 @@ import type {
   Expr,
   Grouping,
   Literal,
+  Logical,
   Ternary,
   Unary,
   Variable,
@@ -107,6 +108,18 @@ export class Interpreter
 
   visitLiteralExpr(expr: Literal): PlainObject {
     return expr.value;
+  }
+
+  visitLogicalExpr(expr: Logical): PlainObject {
+    const left = this.evaluate(expr.left);
+
+    if (expr.operator.type === T.OR) {
+      if (this.isTruthy(left)) return left;
+    } else {
+      if (!this.isTruthy(left)) return left;
+    }
+
+    return this.evaluate(expr.right);
   }
 
   visitTernaryExpr(expr: Ternary): PlainObject {

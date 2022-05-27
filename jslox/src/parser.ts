@@ -4,6 +4,7 @@ import {
   Expr,
   Grouping,
   Literal,
+  Logical,
   Ternary,
   Unary,
   Variable,
@@ -143,13 +144,37 @@ export class Parser {
   }
 
   ternary(): Expr {
-    const expr = this.equality();
+    const expr = this.or();
     if (this.match(T.QUESTION)) {
-      const left = this.equality();
+      const left = this.or();
       this.consume(T.COLON, "Expect ':' after '?' left expression");
       const right = this.ternary();
       return new Ternary(expr, left, right);
     }
+    return expr;
+  }
+
+  or(): Expr {
+    let expr = this.and();
+
+    while (this.match(T.OR)) {
+      const operator = this.previous();
+      const right = this.and();
+      expr = new Logical(expr, operator, right);
+    }
+
+    return expr;
+  }
+
+  and(): Expr {
+    let expr = this.equality();
+
+    while (this.match(T.AND)) {
+      const operator = this.previous();
+      const right = this.equality();
+      expr = new Logical(expr, operator, right);
+    }
+
     return expr;
   }
 
