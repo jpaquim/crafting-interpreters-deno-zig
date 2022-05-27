@@ -16,7 +16,7 @@ export class Environment {
 
   get(name: Token): PlainObject {
     if (this.values.has(name.lexeme)) {
-      return this.values.get(name.lexeme) as PlainObject;
+      return this.values.get(name.lexeme);
     }
 
     if (this.enclosing !== null) return this.enclosing.get(name);

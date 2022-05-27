@@ -1,1 +1,1 @@
-export type PlainObject = boolean | number | string | null;
+export type PlainObject = boolean | number | string | null | undefined;

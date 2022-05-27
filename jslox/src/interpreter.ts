@@ -131,7 +131,9 @@ export class Interpreter
   }
 
   visitVariableExpr(expr: Variable): PlainObject {
-    return this.environment.get(expr.name);
+    const value = this.environment.get(expr.name);
+    if (value !== undefined) return value;
+    throw new RuntimeError(expr.name, 'Variable not initialized.');
   }
 
   checkNumberOperand(operator: Token, operand: PlainObject): void {
@@ -184,7 +186,7 @@ export class Interpreter
   }
 
   visitVarStmt(stmt: Var): void {
-    let value = null;
+    let value;
     if (stmt.initializer != null) {
       value = this.evaluate(stmt.initializer);
     }
