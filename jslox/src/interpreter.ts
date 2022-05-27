@@ -19,6 +19,7 @@ import type {
   Stmt,
   Var,
   Visitor as StmtVisitor,
+  While,
 } from './stmt.ts';
 import { runtimeError } from './mod.ts';
 import { RuntimeError } from './runtime-error.ts';
@@ -215,6 +216,12 @@ export class Interpreter
     }
 
     this.environment.define(stmt.name.lexeme, value);
+  }
+
+  visitWhileStmt(stmt: While): void {
+    while (this.isTruthy(this.evaluate(stmt.condition))) {
+      this.execute(stmt.body);
+    }
   }
 
   visitAssignExpr(expr: Assign): PlainObject {

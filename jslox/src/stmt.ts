@@ -11,6 +11,7 @@ export interface Visitor<R> {
   visitIfStmt(stmt: If): R;
   visitPrintStmt(stmt: Print): R;
   visitVarStmt(stmt: Var): R;
+  visitWhileStmt(stmt: While): R;
 }
 
 export class Block extends Stmt {
@@ -82,4 +83,19 @@ export class Var extends Stmt {
 
   name: Token;
   initializer?: Expr;
+}
+
+export class While extends Stmt {
+  constructor(condition: Expr, body: Stmt) {
+    super();
+    this.condition = condition;
+    this.body = body;
+  }
+
+  override accept<R>(visitor: Visitor<R>): R {
+    return visitor.visitWhileStmt(this);
+  }
+
+  condition: Expr;
+  body: Stmt;
 }

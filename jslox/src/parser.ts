@@ -10,7 +10,7 @@ import {
   Variable,
 } from './expr.ts';
 import { error } from './mod.ts';
-import { Block, Expression, If, Print, Stmt, Var } from './stmt.ts';
+import { Block, Expression, If, Print, Stmt, Var, While } from './stmt.ts';
 import { Token } from './token.ts';
 import { TokenType } from './token-type.ts';
 
@@ -52,6 +52,7 @@ export class Parser {
   statement(): Stmt {
     if (this.match(T.IF)) return this.ifStatement();
     if (this.match(T.PRINT)) return this.printStatement();
+    if (this.match(T.WHILE)) return this.whileStatement();
     if (this.match(T.LEFT_BRACE)) return new Block(this.block());
 
     return this.expressionStatement();
@@ -108,6 +109,15 @@ export class Parser {
 
     this.consume(T.SEMICOLON, "Expect ';' after variable declaration.");
     return new Var(name, initializer);
+  }
+
+  whileStatement(): Stmt {
+    this.consume(T.LEFT_PAREN, "Expect '(' after 'while'.");
+    const condition = this.expression();
+    this.consume(T.RIGHT_PAREN, "Expect ')' after condition.");
+    const body = this.statement();
+
+    return new While(condition, body);
   }
 
   comma(): Expr {
