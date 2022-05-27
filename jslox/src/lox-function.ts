@@ -7,13 +7,16 @@ import type { LoxObject } from './types.ts';
 
 export class LoxFunction extends Callable {
   declaration: Stmt.Function;
-  constructor(declaration: Stmt.Function) {
+  closure: Environment;
+
+  constructor(declaration: Stmt.Function, closure: Environment) {
     super();
+    this.closure = closure;
     this.declaration = declaration;
   }
 
   override call(interpreter: Interpreter, args: LoxObject[]): LoxObject {
-    const environment = new Environment(interpreter.globals);
+    const environment = new Environment(this.closure);
     for (let i = 0; i < this.declaration.params.length; ++i) {
       environment.define(this.declaration.params[i].lexeme, args[i]);
     }
