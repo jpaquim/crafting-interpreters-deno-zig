@@ -11,6 +11,7 @@ import type {
   Visitor as ExprVisitor,
 } from './expr.ts';
 import type {
+  Block,
   Expression,
   Print,
   Stmt,
@@ -154,6 +155,23 @@ export class Interpreter
 
   execute(statement: Stmt): void {
     return statement.accept(this);
+  }
+
+  executeBlock(statements: Stmt[], environment: Environment) {
+    const previous = this.environment;
+    try {
+      this.environment = environment;
+
+      for (const statement of statements) {
+        this.execute(statement);
+      }
+    } finally {
+      this.environment = previous;
+    }
+  }
+
+  visitBlockStmt(stmt: Block): void {
+    this.executeBlock(stmt.statements, new Environment(this.environment));
   }
 
   visitExpressionStmt(stmt: Expression): void {

@@ -9,7 +9,7 @@ import {
   Variable,
 } from './expr.ts';
 import { error } from './mod.ts';
-import { Expression, Print, Stmt, Var } from './stmt.ts';
+import { Block, Expression, Print, Stmt, Var } from './stmt.ts';
 import { Token } from './token.ts';
 import { TokenType } from './token-type.ts';
 
@@ -47,6 +47,7 @@ export class Parser {
 
   statement(): Stmt {
     if (this.match(T.PRINT)) return this.printStatement();
+    if (this.match(T.LEFT_BRACE)) return new Block(this.block());
 
     return this.expressionStatement();
   }
@@ -55,6 +56,16 @@ export class Parser {
     const value = this.comma();
     this.consume(T.SEMICOLON, "Expect ';' after expression.");
     return new Expression(value);
+  }
+
+  block(): Stmt[] {
+    const statements = [];
+    while (!this.check(T.RIGHT_BRACE) && !this.isAtEnd()) {
+      statements.push(this.declaration() as Stmt);
+    }
+
+    this.consume(T.RIGHT_BRACE, "Expect '}' after block");
+    return statements;
   }
 
   printStatement(): Stmt {

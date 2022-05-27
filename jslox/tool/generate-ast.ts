@@ -16,6 +16,7 @@ defineAst(outputDir, 'Expr', [
 ]);
 
 defineAst(outputDir, 'Stmt', [
+  'Block      : statements: Stmt[]',
   'Expression : expression: Expr',
   'Print      : expression: Expr',
   'Var        : name: Token, initializer: Expr | null',
@@ -132,7 +133,7 @@ function defineTypeImports(
       const fields = type
         .slice(separatorIndex + 1)
         .split(', ')
-        .map(field => field.split(':')[1].split('|')[0].trim());
+        .map(field => field.split(':')[1].split('|')[0].split('[')[0].trim());
       for (const field of fields.filter(field => field !== baseName)) {
         importsSet.add(field);
       }
