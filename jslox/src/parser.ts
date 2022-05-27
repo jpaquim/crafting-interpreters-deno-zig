@@ -1,5 +1,6 @@
 import { Binary, Expr, Grouping, Literal, Ternary, Unary } from './expr.ts';
 import { error } from './mod.ts';
+import { Expression, Print, Stmt } from './stmt.ts';
 import { Token } from './token.ts';
 import { TokenType } from './token-type.ts';
 
@@ -13,13 +14,31 @@ export class Parser {
     this.tokens = tokens;
   }
 
-  parse(): Expr | null {
-    try {
-      return this.comma();
-    } catch (error) {
-      if (error instanceof ParseError) return null;
-      throw error;
+  parse(): Stmt[] {
+    const statements: Stmt[] = [];
+    while (!this.isAtEnd()) {
+      statements.push(this.statement());
     }
+
+    return statements;
+  }
+
+  statement(): Stmt {
+    if (this.match(T.PRINT)) return this.printStatement();
+
+    return this.expressionStatement();
+  }
+
+  printStatement(): Stmt {
+    const value = this.expression();
+    this.consume(T.SEMICOLON, "Expect ';' after value.");
+    return new Print(value);
+  }
+
+  expressionStatement(): Stmt {
+    const value = this.comma();
+    this.consume(T.SEMICOLON, "Expect ';' after expression.");
+    return new Expression(value);
   }
 
   comma(): Expr {

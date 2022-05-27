@@ -13,18 +13,21 @@ defineAst(outputDir, 'Expr', [
   'Unary    : operator: Token, right: Expr',
 ]);
 
+defineAst(outputDir, 'Stmt', [
+  'Expression : expression: Expr',
+  'Print      : expression: Expr',
+]);
+
 function defineAst(outputDir: string, baseName: string, types: string[]): void {
   const path = `${outputDir}/${baseName.toLowerCase()}.ts`;
   const file = Deno.openSync(path, { write: true, create: true });
   const writer = file.writable.getWriter();
   const encoder = new TextEncoder();
 
-  writer.write(
-    encoder.encode(`import type { Token } from '../src/token.ts';\n`),
-  );
-  writer.write(
-    encoder.encode(`import type { PlainObject } from '../src/types.ts';\n\n`),
-  );
+  defineTypeImports(writer, baseName, types);
+
+  writer.write(encoder.encode('\n'));
+
   writer.write(
     encoder.encode(`export abstract class ${baseName} {
   abstract accept<R>(visitor: Visitor<R>): R;\n}\n\n`),
@@ -48,7 +51,7 @@ function defineType(
   baseName: string,
   className: string,
   fieldList: string,
-) {
+): void {
   const encoder = new TextEncoder();
 
   writer.write(
@@ -89,7 +92,7 @@ function defineVisitor(
   writer: WritableStreamDefaultWriter,
   baseName: string,
   types: string[],
-) {
+): void {
   const encoder = new TextEncoder();
 
   writer.write(encoder.encode('export interface Visitor<R> {\n'));
@@ -105,4 +108,38 @@ function defineVisitor(
   }
 
   writer.write(encoder.encode('}\n'));
+}
+
+function defineTypeImports(
+  writer: WritableStreamDefaultWriter,
+  baseName: string,
+  types: string[],
+): void {
+  const typeImports: Record<string, string> = {
+    Expr: '../src/expr.ts',
+    Token: '../src/token.ts',
+    PlainObject: '../src/types.ts',
+  };
+
+  const encoder = new TextEncoder();
+
+  const imports = [
+    ...types.reduce((importsSet, type) => {
+      const separatorIndex = type.indexOf(':');
+      const fields = type
+        .slice(separatorIndex + 1)
+        .split(', ')
+        .map(field => field.split(': ')[1].trim());
+      for (const field of fields.filter(field => field !== baseName)) {
+        importsSet.add(field);
+      }
+      return importsSet;
+    }, new Set<string>()),
+  ];
+
+  for (const type of imports) {
+    writer.write(
+      encoder.encode(`import type { ${type} } from '${typeImports[type]}';\n`),
+    );
+  }
 }
