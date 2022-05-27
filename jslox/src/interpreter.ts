@@ -70,6 +70,9 @@ export class Interpreter implements Visitor<PlainObject> {
         );
       case T.SLASH:
         this.checkNumberOperands(expr.operator, left, right);
+        if (right === 0) {
+          throw new RuntimeError(expr.operator, 'Attempted to divide by zero.');
+        }
         return (left as number) / (right as number);
       case T.STAR:
         this.checkNumberOperands(expr.operator, left, right);
