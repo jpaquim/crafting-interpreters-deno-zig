@@ -1,20 +1,20 @@
 import { RuntimeError } from './runtime-error.ts';
 import type { Token } from './token.ts';
-import type { PlainObject } from './types.ts';
+import type { LoxObject } from './types.ts';
 
 export class Environment {
   enclosing: Environment | null;
-  values = new Map<string, PlainObject | undefined>();
+  values = new Map<string, LoxObject | undefined>();
 
   constructor(enclosing?: Environment | null) {
     this.enclosing = enclosing ?? null;
   }
 
-  define(name: string, value: PlainObject | undefined): void {
+  define(name: string, value: LoxObject | undefined): void {
     this.values.set(name, value);
   }
 
-  get(name: Token): PlainObject | undefined {
+  get(name: Token): LoxObject | undefined {
     if (this.values.has(name.lexeme)) {
       return this.values.get(name.lexeme);
     }
@@ -24,7 +24,7 @@ export class Environment {
     throw new RuntimeError(name, `Undefined variable '${name.lexeme}'.`);
   }
 
-  assign(name: Token, value: PlainObject): void {
+  assign(name: Token, value: LoxObject): void {
     if (this.values.has(name.lexeme)) {
       this.values.set(name.lexeme, value);
       return;

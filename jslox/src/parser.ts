@@ -1,6 +1,7 @@
 import {
   Assign,
   Binary,
+  Call,
   Expr,
   Grouping,
   Literal,
@@ -318,7 +319,35 @@ export class Parser {
       return new Unary(operator, right);
     }
 
-    return this.primary();
+    return this.call();
+  }
+
+  call(): Expr {
+    let expr = this.primary();
+
+    while (true) {
+      if (this.match(T.LEFT_PAREN)) {
+        expr = this.finishCall(expr);
+      } else break;
+    }
+
+    return expr;
+  }
+
+  finishCall(callee: Expr): Expr {
+    const args = [];
+    if (!this.check(T.RIGHT_PAREN)) {
+      do {
+        if (args.length >= 255) {
+          this.error(this.peek(), "Can't have more than 255 arguments.");
+        }
+        args.push(this.expression());
+      } while (this.match(T.COMMA));
+    }
+
+    const paren = this.consume(T.RIGHT_PAREN, "Expect ')' after arguments.");
+
+    return new Call(callee, paren, args);
   }
 
   primary(): Expr {

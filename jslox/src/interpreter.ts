@@ -1,7 +1,9 @@
+import { Callable } from './callable.ts';
 import { Environment } from './environment.ts';
 import type {
   Assign,
   Binary,
+  Call,
   Expr,
   Grouping,
   Literal,
@@ -27,13 +29,11 @@ import { runtimeError } from './mod.ts';
 import { RuntimeError } from './runtime-error.ts';
 import type { Token } from './token.ts';
 import { TokenType } from './token-type.ts';
-import type { PlainObject } from './types.ts';
+import type { LoxObject } from './types.ts';
 
 const T = TokenType;
 
-export class Interpreter
-  implements ExprVisitor<PlainObject>, StmtVisitor<void>
-{
+export class Interpreter implements ExprVisitor<LoxObject>, StmtVisitor<void> {
   environment = new Environment();
 
   interpret(statements: Stmt[]) {
@@ -47,7 +47,7 @@ export class Interpreter
     }
   }
 
-  visitBinaryExpr(expr: Binary): PlainObject {
+  visitBinaryExpr(expr: Binary): LoxObject {
     const left = this.evaluate(expr.left);
     const right = this.evaluate(expr.right);
 
@@ -105,15 +105,39 @@ export class Interpreter
     throw new Error('unreachable');
   }
 
-  visitGroupingExpr(expr: Grouping): PlainObject {
+  visitCallExpr(expr: Call): LoxObject {
+    const callee = this.evaluate(expr.callee);
+
+    const args = [];
+    for (const argument of expr.args) {
+      args.push(this.evaluate(argument));
+    }
+
+    if (!(callee instanceof Callable)) {
+      throw new RuntimeError(expr.paren, 'Can only call functions and classes');
+    }
+
+    const fn = callee as Callable;
+
+    if (args.length !== fn.arity()) {
+      throw new RuntimeError(
+        expr.paren,
+        `Expected ${fn.arity()} arguments but got ${args.length}.`,
+      );
+    }
+
+    return fn.call(this, args);
+  }
+
+  visitGroupingExpr(expr: Grouping): LoxObject {
     return this.evaluate(expr.expression);
   }
 
-  visitLiteralExpr(expr: Literal): PlainObject {
+  visitLiteralExpr(expr: Literal): LoxObject {
     return expr.value;
   }
 
-  visitLogicalExpr(expr: Logical): PlainObject {
+  visitLogicalExpr(expr: Logical): LoxObject {
     const left = this.evaluate(expr.left);
 
     if (expr.operator.type === T.OR) {
@@ -125,7 +149,7 @@ export class Interpreter
     return this.evaluate(expr.right);
   }
 
-  visitTernaryExpr(expr: Ternary): PlainObject {
+  visitTernaryExpr(expr: Ternary): LoxObject {
     if (this.isTruthy(this.evaluate(expr.predicate))) {
       return this.evaluate(expr.left);
     } else {
@@ -133,7 +157,7 @@ export class Interpreter
     }
   }
 
-  visitUnaryExpr(expr: Unary): PlainObject {
+  visitUnaryExpr(expr: Unary): LoxObject {
     const right = this.evaluate(expr.right);
 
     switch (expr.operator.type) {
@@ -147,28 +171,28 @@ export class Interpreter
     throw new Error('unreachable');
   }
 
-  visitVariableExpr(expr: Variable): PlainObject {
+  visitVariableExpr(expr: Variable): LoxObject {
     const value = this.environment.get(expr.name);
     if (value !== undefined) return value;
     throw new RuntimeError(expr.name, 'Variable not initialized.');
   }
 
-  checkNumberOperand(operator: Token, operand: PlainObject): void {
+  checkNumberOperand(operator: Token, operand: LoxObject): void {
     if (typeof operand === 'number') return;
     throw new RuntimeError(operator, 'Operand must be a number.');
   }
 
   checkNumberOperands(
     operator: Token,
-    left: PlainObject,
-    right: PlainObject,
+    left: LoxObject,
+    right: LoxObject,
   ): void {
     if (typeof left === 'number' && typeof right === 'number') return;
 
     throw new RuntimeError(operator, 'Operands must be a number.');
   }
 
-  evaluate(expr: Expr): PlainObject {
+  evaluate(expr: Expr): LoxObject {
     return expr.accept(this);
   }
 
@@ -242,26 +266,26 @@ export class Interpreter
     }
   }
 
-  visitAssignExpr(expr: Assign): PlainObject {
+  visitAssignExpr(expr: Assign): LoxObject {
     const value = this.evaluate(expr.value);
     this.environment.assign(expr.name, value);
     return value;
   }
 
-  isTruthy(object: PlainObject): boolean {
+  isTruthy(object: LoxObject): boolean {
     if (object === null) return false;
     if (typeof object === 'boolean') return object;
     return true;
   }
 
-  isEqual(a: PlainObject, b: PlainObject): boolean {
+  isEqual(a: LoxObject, b: LoxObject): boolean {
     if (a === null && b === null) return true;
     if (a === null) return false;
 
     return a === b;
   }
 
-  stringify(object: PlainObject): string {
+  stringify(object: LoxObject): string {
     if (object === null) return 'nil';
 
     if (typeof object === 'number') {
