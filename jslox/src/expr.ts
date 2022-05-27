@@ -17,6 +17,9 @@ export interface Visitor<R> {
 }
 
 export class Assign extends Expr {
+  name: Token;
+  value: Expr;
+
   constructor(name: Token, value: Expr) {
     super();
     this.name = name;
@@ -26,12 +29,13 @@ export class Assign extends Expr {
   override accept<R>(visitor: Visitor<R>): R {
     return visitor.visitAssignExpr(this);
   }
-
-  name: Token;
-  value: Expr;
 }
 
 export class Binary extends Expr {
+  left: Expr;
+  operator: Token;
+  right: Expr;
+
   constructor(left: Expr, operator: Token, right: Expr) {
     super();
     this.left = left;
@@ -42,13 +46,11 @@ export class Binary extends Expr {
   override accept<R>(visitor: Visitor<R>): R {
     return visitor.visitBinaryExpr(this);
   }
-
-  left: Expr;
-  operator: Token;
-  right: Expr;
 }
 
 export class Grouping extends Expr {
+  expression: Expr;
+
   constructor(expression: Expr) {
     super();
     this.expression = expression;
@@ -57,11 +59,11 @@ export class Grouping extends Expr {
   override accept<R>(visitor: Visitor<R>): R {
     return visitor.visitGroupingExpr(this);
   }
-
-  expression: Expr;
 }
 
 export class Literal extends Expr {
+  value: PlainObject;
+
   constructor(value: PlainObject) {
     super();
     this.value = value;
@@ -70,11 +72,13 @@ export class Literal extends Expr {
   override accept<R>(visitor: Visitor<R>): R {
     return visitor.visitLiteralExpr(this);
   }
-
-  value: PlainObject;
 }
 
 export class Logical extends Expr {
+  left: Expr;
+  operator: Token;
+  right: Expr;
+
   constructor(left: Expr, operator: Token, right: Expr) {
     super();
     this.left = left;
@@ -85,13 +89,13 @@ export class Logical extends Expr {
   override accept<R>(visitor: Visitor<R>): R {
     return visitor.visitLogicalExpr(this);
   }
-
-  left: Expr;
-  operator: Token;
-  right: Expr;
 }
 
 export class Ternary extends Expr {
+  predicate: Expr;
+  left: Expr;
+  right: Expr;
+
   constructor(predicate: Expr, left: Expr, right: Expr) {
     super();
     this.predicate = predicate;
@@ -102,13 +106,12 @@ export class Ternary extends Expr {
   override accept<R>(visitor: Visitor<R>): R {
     return visitor.visitTernaryExpr(this);
   }
-
-  predicate: Expr;
-  left: Expr;
-  right: Expr;
 }
 
 export class Unary extends Expr {
+  operator: Token;
+  right: Expr;
+
   constructor(operator: Token, right: Expr) {
     super();
     this.operator = operator;
@@ -118,12 +121,11 @@ export class Unary extends Expr {
   override accept<R>(visitor: Visitor<R>): R {
     return visitor.visitUnaryExpr(this);
   }
-
-  operator: Token;
-  right: Expr;
 }
 
 export class Variable extends Expr {
+  name: Token;
+
   constructor(name: Token) {
     super();
     this.name = name;
@@ -132,6 +134,4 @@ export class Variable extends Expr {
   override accept<R>(visitor: Visitor<R>): R {
     return visitor.visitVariableExpr(this);
   }
-
-  name: Token;
 }

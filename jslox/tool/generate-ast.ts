@@ -18,6 +18,8 @@ defineAst(outputDir, 'Expr', [
 
 defineAst(outputDir, 'Stmt', [
   'Block      : statements: Stmt[]',
+  'Break      : ',
+  'Continue   : ',
   'Expression : expression: Expr',
   'If         : condition: Expr, thenBranch: Stmt, elseBranch?: Stmt',
   'Print      : expression: Expr',
@@ -65,16 +67,22 @@ function defineType(
     encoder.encode(`export class ${className} extends ${baseName} {\n`),
   );
 
-  writer.write(encoder.encode(`  constructor(${fieldList}) {\n`));
-  writer.write(encoder.encode('    super();\n'));
+  if (fieldList.length > 0) {
+    // fields
+    const fields = fieldList.split(', ');
+    for (const field of fields) {
+      writer.write(encoder.encode(`  ${field};\n`));
+    }
+    writer.write(encoder.encode('\n'));
+    writer.write(encoder.encode(`  constructor(${fieldList}) {\n`));
+    writer.write(encoder.encode('    super();\n'));
+    for (const field of fields) {
+      const name = field.split(':')[0].split('?')[0];
+      writer.write(encoder.encode(`    this.${name} = ${name};\n`));
+    }
 
-  const fields = fieldList.split(', ');
-  for (const field of fields) {
-    const name = field.split(':')[0].split('?')[0];
-    writer.write(encoder.encode(`    this.${name} = ${name};\n`));
+    writer.write(encoder.encode('  }\n'));
   }
-
-  writer.write(encoder.encode('  }\n'));
 
   // visitor pattern
   writer.write(encoder.encode('\n'));
@@ -85,13 +93,6 @@ function defineType(
     encoder.encode(`    return visitor.visit${className}${baseName}(this);\n`),
   );
   writer.write(encoder.encode('  }\n'));
-
-  // fields
-  writer.write(encoder.encode('\n'));
-  for (const field of fields) {
-    writer.write(encoder.encode(`  ${field};\n`));
-  }
-
   writer.write(encoder.encode('}\n'));
 }
 
@@ -136,8 +137,13 @@ function defineTypeImports(
       const fields = type
         .slice(separatorIndex + 1)
         .split(', ')
-        .map(field => field.split(':')[1].split('|')[0].split('[')[0].trim());
-      for (const field of fields.filter(field => field !== baseName)) {
+        .map(
+          field =>
+            field.split(':')[1]?.split('|')[0].split('[')[0].trim() ?? null,
+        );
+      for (const field of fields.filter(
+        field => field !== null && field !== baseName,
+      )) {
         importsSet.add(field);
       }
       return importsSet;

@@ -13,6 +13,8 @@ import type {
 } from './expr.ts';
 import type {
   Block,
+  Break,
+  Continue,
   Expression,
   If,
   Print,
@@ -191,6 +193,14 @@ export class Interpreter
     this.executeBlock(stmt.statements, new Environment(this.environment));
   }
 
+  visitBreakStmt(_stmt: Break): void {
+    throw new BreakError();
+  }
+
+  visitContinueStmt(_stmt: Continue): void {
+    throw new ContinueError();
+  }
+
   visitExpressionStmt(stmt: Expression): void {
     this.evaluate(stmt.expression);
   }
@@ -220,7 +230,15 @@ export class Interpreter
 
   visitWhileStmt(stmt: While): void {
     while (this.isTruthy(this.evaluate(stmt.condition))) {
-      this.execute(stmt.body);
+      try {
+        this.execute(stmt.body);
+      } catch (error) {
+        if (error instanceof BreakError) {
+          break;
+        } else if (error instanceof ContinueError) {
+          continue;
+        } else throw error;
+      }
     }
   }
 
@@ -257,3 +275,7 @@ export class Interpreter
     return String(object);
   }
 }
+
+class BreakError extends Error {}
+
+class ContinueError extends Error {}

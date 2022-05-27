@@ -23,6 +23,8 @@ export class Scanner {
     ['true', T.TRUE],
     ['var', T.VAR],
     ['while', T.WHILE],
+    ['break', T.BREAK],
+    ['continue', T.CONTINUE],
   ]);
 
   source: string;

@@ -50,4 +50,8 @@ export enum TokenType {
   // ternary operator
   QUESTION,
   COLON,
+
+  // loop break/continue
+  BREAK,
+  CONTINUE,
 }

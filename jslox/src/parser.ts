@@ -10,7 +10,17 @@ import {
   Variable,
 } from './expr.ts';
 import { error } from './mod.ts';
-import { Block, Expression, If, Print, Stmt, Var, While } from './stmt.ts';
+import {
+  Block,
+  Break,
+  Continue,
+  Expression,
+  If,
+  Print,
+  Stmt,
+  Var,
+  While,
+} from './stmt.ts';
 import { Token } from './token.ts';
 import { TokenType } from './token-type.ts';
 
@@ -21,6 +31,7 @@ export class Parser {
   current = 0;
 
   repl: boolean;
+  loop = false;
 
   constructor(tokens: Token[], repl: boolean) {
     this.tokens = tokens;
@@ -50,6 +61,8 @@ export class Parser {
   }
 
   statement(): Stmt {
+    if (this.match(T.BREAK)) return this.breakStatement();
+    if (this.match(T.CONTINUE)) return this.continueStatement();
     if (this.match(T.FOR)) return this.forStatement();
     if (this.match(T.IF)) return this.ifStatement();
     if (this.match(T.PRINT)) return this.printStatement();
@@ -57,6 +70,26 @@ export class Parser {
     if (this.match(T.LEFT_BRACE)) return new Block(this.block());
 
     return this.expressionStatement();
+  }
+
+  breakStatement(): Stmt {
+    if (!this.loop)
+      this.error(
+        this.previous(),
+        "'break' only allowed inside for or while loop.",
+      );
+    this.consume(T.SEMICOLON, "Expect ';' after break.");
+    return new Break();
+  }
+
+  continueStatement(): Stmt {
+    if (!this.loop)
+      this.error(
+        this.previous(),
+        "'continue' only allowed inside for or while loop.",
+      );
+    this.consume(T.SEMICOLON, "Expect ';' after continue.");
+    return new Continue();
   }
 
   forStatement(): Stmt {
@@ -82,7 +115,10 @@ export class Parser {
       increment = this.expression();
     }
     this.consume(T.RIGHT_PAREN, "Expect ')' after for clauses.");
+
+    this.loop = true;
     let body = this.statement();
+    this.loop = false;
 
     if (increment !== null) {
       body = new Block([body, new Expression(increment)]);
@@ -155,7 +191,10 @@ export class Parser {
     this.consume(T.LEFT_PAREN, "Expect '(' after 'while'.");
     const condition = this.expression();
     this.consume(T.RIGHT_PAREN, "Expect ')' after condition.");
+
+    this.loop = true;
     const body = this.statement();
+    this.loop = false;
 
     return new While(condition, body);
   }

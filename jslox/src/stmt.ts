@@ -7,6 +7,8 @@ export abstract class Stmt {
 
 export interface Visitor<R> {
   visitBlockStmt(stmt: Block): R;
+  visitBreakStmt(stmt: Break): R;
+  visitContinueStmt(stmt: Continue): R;
   visitExpressionStmt(stmt: Expression): R;
   visitIfStmt(stmt: If): R;
   visitPrintStmt(stmt: Print): R;
@@ -15,6 +17,8 @@ export interface Visitor<R> {
 }
 
 export class Block extends Stmt {
+  statements: Stmt[];
+
   constructor(statements: Stmt[]) {
     super();
     this.statements = statements;
@@ -23,11 +27,25 @@ export class Block extends Stmt {
   override accept<R>(visitor: Visitor<R>): R {
     return visitor.visitBlockStmt(this);
   }
+}
 
-  statements: Stmt[];
+export class Break extends Stmt {
+
+  override accept<R>(visitor: Visitor<R>): R {
+    return visitor.visitBreakStmt(this);
+  }
+}
+
+export class Continue extends Stmt {
+
+  override accept<R>(visitor: Visitor<R>): R {
+    return visitor.visitContinueStmt(this);
+  }
 }
 
 export class Expression extends Stmt {
+  expression: Expr;
+
   constructor(expression: Expr) {
     super();
     this.expression = expression;
@@ -36,11 +54,13 @@ export class Expression extends Stmt {
   override accept<R>(visitor: Visitor<R>): R {
     return visitor.visitExpressionStmt(this);
   }
-
-  expression: Expr;
 }
 
 export class If extends Stmt {
+  condition: Expr;
+  thenBranch: Stmt;
+  elseBranch?: Stmt;
+
   constructor(condition: Expr, thenBranch: Stmt, elseBranch?: Stmt) {
     super();
     this.condition = condition;
@@ -51,13 +71,11 @@ export class If extends Stmt {
   override accept<R>(visitor: Visitor<R>): R {
     return visitor.visitIfStmt(this);
   }
-
-  condition: Expr;
-  thenBranch: Stmt;
-  elseBranch?: Stmt;
 }
 
 export class Print extends Stmt {
+  expression: Expr;
+
   constructor(expression: Expr) {
     super();
     this.expression = expression;
@@ -66,11 +84,12 @@ export class Print extends Stmt {
   override accept<R>(visitor: Visitor<R>): R {
     return visitor.visitPrintStmt(this);
   }
-
-  expression: Expr;
 }
 
 export class Var extends Stmt {
+  name: Token;
+  initializer?: Expr;
+
   constructor(name: Token, initializer?: Expr) {
     super();
     this.name = name;
@@ -80,12 +99,12 @@ export class Var extends Stmt {
   override accept<R>(visitor: Visitor<R>): R {
     return visitor.visitVarStmt(this);
   }
-
-  name: Token;
-  initializer?: Expr;
 }
 
 export class While extends Stmt {
+  condition: Expr;
+  body: Stmt;
+
   constructor(condition: Expr, body: Stmt) {
     super();
     this.condition = condition;
@@ -95,7 +114,4 @@ export class While extends Stmt {
   override accept<R>(visitor: Visitor<R>): R {
     return visitor.visitWhileStmt(this);
   }
-
-  condition: Expr;
-  body: Stmt;
 }
