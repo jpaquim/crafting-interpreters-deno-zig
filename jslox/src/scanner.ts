@@ -110,6 +110,9 @@ export class Scanner {
       case '\r':
       case '\t':
         break;
+      case '\n':
+        this.line++;
+        break;
       case '"':
         this.string();
         break;

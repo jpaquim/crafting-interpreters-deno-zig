@@ -43,13 +43,11 @@ function run(source: string): void {
   const scanner = new Scanner(source);
   const tokens = scanner.scanTokens();
   const parser = new Parser(tokens);
-  const expression = parser.parse();
+  const statements = parser.parse();
 
   if (hadError) return;
 
-  if (expression === null) throw new Error();
-
-  interpreter.interpret(expression);
+  interpreter.interpret(statements);
 }
 
 export function error(line_or_token: number | Token, message: string): void {

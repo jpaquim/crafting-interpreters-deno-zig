@@ -1,25 +1,34 @@
-import {
+import type {
   Binary,
   Expr,
   Grouping,
   Literal,
   Ternary,
   Unary,
-  Visitor,
+  Visitor as ExprVisitor,
 } from './expr.ts';
+import type {
+  Expression,
+  Print,
+  Stmt,
+  Visitor as StmtVisitor,
+} from './stmt.ts';
 import { runtimeError } from './mod.ts';
 import { RuntimeError } from './runtime-error.ts';
-import { Token } from './token.ts';
+import type { Token } from './token.ts';
 import { TokenType } from './token-type.ts';
 import type { PlainObject } from './types.ts';
 
 const T = TokenType;
 
-export class Interpreter implements Visitor<PlainObject> {
-  interpret(expression: Expr) {
+export class Interpreter
+  implements ExprVisitor<PlainObject>, StmtVisitor<void>
+{
+  interpret(statements: Stmt[]) {
     try {
-      const value = this.evaluate(expression);
-      console.log(this.stringify(value));
+      for (const statement of statements) {
+        this.execute(statement);
+      }
     } catch (error) {
       if (error instanceof RuntimeError) return runtimeError(error);
       throw error;
@@ -131,6 +140,19 @@ export class Interpreter implements Visitor<PlainObject> {
 
   evaluate(expr: Expr): PlainObject {
     return expr.accept(this);
+  }
+
+  execute(statement: Stmt): void {
+    return statement.accept(this);
+  }
+
+  visitExpressionStmt(stmt: Expression): void {
+    this.evaluate(stmt.expression);
+  }
+
+  visitPrintStmt(stmt: Print): void {
+    const value = this.evaluate(stmt.expression);
+    console.log(this.stringify(value));
   }
 
   isTruthy(object: PlainObject): boolean {
