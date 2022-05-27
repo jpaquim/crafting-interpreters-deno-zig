@@ -51,12 +51,17 @@ export class Interpreter implements Visitor<PlainObject> {
         this.checkNumberOperands(expr.operator, left, right);
         return (left as number) - (right as number);
       case T.PLUS:
+        // TODO: replace with left + right and just use JS semantics?
         if (typeof left == 'number' && typeof right == 'number') {
           return left + right;
         }
 
-        if (typeof left == 'string' && typeof right == 'string') {
-          return left.concat(right);
+        if (typeof left == 'string') {
+          return left.concat(String(right));
+        }
+
+        if (typeof right == 'string') {
+          return String(left).concat(right);
         }
 
         throw new RuntimeError(
@@ -69,6 +74,8 @@ export class Interpreter implements Visitor<PlainObject> {
       case T.STAR:
         this.checkNumberOperands(expr.operator, left, right);
         return (left as number) * (right as number);
+      case T.COMMA:
+        return right;
     }
 
     throw new Error('unreachable');
