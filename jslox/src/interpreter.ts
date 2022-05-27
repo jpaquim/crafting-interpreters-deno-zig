@@ -1,5 +1,6 @@
 import { Callable } from './callable.ts';
 import { Environment } from './environment.ts';
+import { Return } from './return.ts';
 import type {
   Assign,
   Binary,
@@ -21,6 +22,7 @@ import type {
   Function,
   If,
   Print,
+  Return as StmtReturn,
   Stmt,
   Var,
   Visitor as StmtVisitor,
@@ -270,6 +272,13 @@ export class Interpreter implements ExprVisitor<LoxObject>, StmtVisitor<void> {
   visitPrintStmt(stmt: Print): void {
     const value = this.evaluate(stmt.expression);
     console.log(this.stringify(value));
+  }
+
+  visitReturnStmt(stmt: StmtReturn): void {
+    let value;
+    if (stmt.value !== undefined) value = this.evaluate(stmt.value);
+
+    throw new Return(value);
   }
 
   visitVarStmt(stmt: Var): void {

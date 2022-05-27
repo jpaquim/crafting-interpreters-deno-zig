@@ -1,6 +1,7 @@
 import { Callable } from './callable.ts';
 import { Environment } from './environment.ts';
 import { Interpreter } from './interpreter.ts';
+import { Return } from './return.ts';
 import type * as Stmt from './stmt.ts';
 import type { LoxObject } from './types.ts';
 
@@ -17,7 +18,13 @@ export class LoxFunction extends Callable {
       environment.define(this.declaration.params[i].lexeme, args[i]);
     }
 
-    interpreter.executeBlock(this.declaration.body, environment);
+    try {
+      interpreter.executeBlock(this.declaration.body, environment);
+    } catch (error) {
+      if (error instanceof Return) {
+        return error.value ?? null;
+      } else throw error;
+    }
     return null;
   }
 
