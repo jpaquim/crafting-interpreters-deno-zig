@@ -1,3 +1,4 @@
+import { Environment } from './environment.ts';
 import type {
   Binary,
   Expr,
@@ -5,12 +6,14 @@ import type {
   Literal,
   Ternary,
   Unary,
+  Variable,
   Visitor as ExprVisitor,
 } from './expr.ts';
 import type {
   Expression,
   Print,
   Stmt,
+  Var,
   Visitor as StmtVisitor,
 } from './stmt.ts';
 import { runtimeError } from './mod.ts';
@@ -24,6 +27,8 @@ const T = TokenType;
 export class Interpreter
   implements ExprVisitor<PlainObject>, StmtVisitor<void>
 {
+  environment = new Environment();
+
   interpret(statements: Stmt[]) {
     try {
       for (const statement of statements) {
@@ -123,6 +128,10 @@ export class Interpreter
     throw new Error('unreachable');
   }
 
+  visitVariableExpr(expr: Variable): PlainObject {
+    return this.environment.get(expr.name);
+  }
+
   checkNumberOperand(operator: Token, operand: PlainObject): void {
     if (typeof operand === 'number') return;
     throw new RuntimeError(operator, 'Operand must be a number.');
@@ -153,6 +162,15 @@ export class Interpreter
   visitPrintStmt(stmt: Print): void {
     const value = this.evaluate(stmt.expression);
     console.log(this.stringify(value));
+  }
+
+  visitVarStmt(stmt: Var): void {
+    let value = null;
+    if (stmt.initializer != null) {
+      value = this.evaluate(stmt.initializer);
+    }
+
+    this.environment.define(stmt.name.lexeme, value);
   }
 
   isTruthy(object: PlainObject): boolean {
