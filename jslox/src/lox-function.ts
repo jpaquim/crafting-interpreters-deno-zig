@@ -1,15 +1,16 @@
 import { Callable } from './callable.ts';
 import { Environment } from './environment.ts';
+import type { Function as ExprFunction } from './expr.ts';
 import { Interpreter } from './interpreter.ts';
 import { Return } from './return.ts';
-import type * as Stmt from './stmt.ts';
+import type { Function as StmtFunction } from './stmt.ts';
 import type { LoxObject } from './types.ts';
 
 export class LoxFunction extends Callable {
-  declaration: Stmt.Function;
+  declaration: StmtFunction | ExprFunction;
   closure: Environment;
 
-  constructor(declaration: Stmt.Function, closure: Environment) {
+  constructor(declaration: StmtFunction | ExprFunction, closure: Environment) {
     super();
     this.closure = closure;
     this.declaration = declaration;
@@ -36,6 +37,6 @@ export class LoxFunction extends Callable {
   }
 
   override toString(): string {
-    return `<fn ${this.declaration.name.lexeme}>`;
+    return `<fn ${this.declaration.name?.lexeme ?? 'anonymous'}>`;
   }
 }

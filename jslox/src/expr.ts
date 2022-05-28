@@ -1,4 +1,5 @@
 import type { Token } from '../src/token.ts';
+import type { Stmt } from '../src/stmt.ts';
 import type { PlainObject } from '../src/types.ts';
 
 export abstract class Expr {
@@ -9,6 +10,7 @@ export interface Visitor<R> {
   visitAssignExpr(expr: Assign): R;
   visitBinaryExpr(expr: Binary): R;
   visitCallExpr(expr: Call): R;
+  visitFunctionExpr(expr: Function): R;
   visitGroupingExpr(expr: Grouping): R;
   visitLiteralExpr(expr: Literal): R;
   visitLogicalExpr(expr: Logical): R;
@@ -63,6 +65,23 @@ export class Call extends Expr {
 
   override accept<R>(visitor: Visitor<R>): R {
     return visitor.visitCallExpr(this);
+  }
+}
+
+export class Function extends Expr {
+  name: Token | undefined;
+  params: Token[];
+  body: Stmt[];
+
+  constructor(name: Token | undefined, params: Token[], body: Stmt[]) {
+    super();
+    this.name = name;
+    this.params = params;
+    this.body = body;
+  }
+
+  override accept<R>(visitor: Visitor<R>): R {
+    return visitor.visitFunctionExpr(this);
   }
 }
 

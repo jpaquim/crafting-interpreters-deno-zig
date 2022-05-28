@@ -9,6 +9,7 @@ defineAst(outputDir, 'Expr', [
   'Assign   : name: Token, value: Expr',
   'Binary   : left: Expr, operator: Token, right: Expr',
   'Call     : callee: Expr, paren: Token, args: Expr[]',
+  'Function : name: Token | undefined, params: Token[], body: Stmt[]',
   'Grouping : expression: Expr',
   'Literal  : value: PlainObject',
   'Logical  : left: Expr, operator: Token, right: Expr',
@@ -128,6 +129,7 @@ function defineTypeImports(
 ): void {
   const typeImports: Record<string, string> = {
     Expr: '../src/expr.ts',
+    Stmt: '../src/stmt.ts',
     Token: '../src/token.ts',
     PlainObject: '../src/types.ts',
   };

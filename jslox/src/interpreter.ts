@@ -6,6 +6,7 @@ import type {
   Binary,
   Call,
   Expr,
+  Function as ExprFunction,
   Grouping,
   Literal,
   Logical,
@@ -309,6 +310,11 @@ export class Interpreter implements ExprVisitor<LoxObject>, StmtVisitor<void> {
     const value = this.evaluate(expr.value);
     this.environment.assign(expr.name, value);
     return value;
+  }
+
+  visitFunctionExpr(expr: ExprFunction): LoxObject {
+    const fn = new LoxFunction(expr, this.environment);
+    return fn;
   }
 
   isTruthy(object: LoxObject): boolean {

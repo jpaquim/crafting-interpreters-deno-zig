@@ -3,6 +3,7 @@ import {
   Binary,
   Call,
   Expr,
+  Function as ExprFunction,
   Grouping,
   Literal,
   Logical,
@@ -16,7 +17,7 @@ import {
   Break,
   Continue,
   Expression,
-  Function,
+  Function as StmtFunction,
   If,
   Print,
   Return,
@@ -164,7 +165,7 @@ export class Parser {
     return new Expression(value);
   }
 
-  function(kind: string): Function {
+  function(kind: string): StmtFunction {
     const name = this.consume(T.IDENTIFIER, `Expect ${kind} name.`);
     this.consume(T.LEFT_PAREN, `Expect '(' after ${kind} name.`);
     const parameters = [];
@@ -181,7 +182,7 @@ export class Parser {
 
     this.consume(T.LEFT_BRACE, `Expect '{' before ${kind} body.`);
     const body = this.block();
-    return new Function(name, parameters, body);
+    return new StmtFunction(name, parameters, body);
   }
 
   block(): Stmt[] {
@@ -247,7 +248,31 @@ export class Parser {
   }
 
   expression(): Expr {
+    if (this.match(T.FUN)) return this.functionExpression();
     return this.assignment();
+  }
+
+  functionExpression(): Expr {
+    let name;
+    if (this.check(T.IDENTIFIER)) {
+      name = this.consume(T.IDENTIFIER, `Expect function name name.`);
+    }
+    this.consume(T.LEFT_PAREN, `Expect '(' after 'fun'.`);
+    const parameters = [];
+    if (!this.check(T.RIGHT_PAREN)) {
+      do {
+        if (parameters.length >= 255) {
+          this.error(this.peek(), "Can't have more than 255 parameters");
+        }
+
+        parameters.push(this.consume(T.IDENTIFIER, 'Expect parameter name.'));
+      } while (this.match(T.COMMA));
+    }
+    this.consume(T.RIGHT_PAREN, "Expect ')' after parameters.");
+
+    this.consume(T.LEFT_BRACE, `Expect '{' before function body.`);
+    const body = this.block();
+    return new ExprFunction(name, parameters, body);
   }
 
   assignment(): Expr {
