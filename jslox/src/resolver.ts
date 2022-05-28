@@ -40,6 +40,11 @@ enum FunctionType {
   METHOD,
 }
 
+enum ClassType {
+  NONE,
+  CLASS,
+}
+
 enum LoopType {
   NONE,
   WHILE,
@@ -49,6 +54,7 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
   interpreter: Interpreter;
   scopes: Map<string, boolean>[] = [];
   currentFunction = FunctionType.NONE;
+  currentClass = ClassType.NONE;
   currentLoop = LoopType.NONE;
 
   constructor(interpreter: Interpreter) {
@@ -136,6 +142,9 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
   }
 
   visitClassStmt(stmt: Class): void {
+    const enclosingClass = this.currentClass;
+    this.currentClass = ClassType.CLASS;
+
     this.declare(stmt.name);
     this.define(stmt.name);
 
@@ -148,6 +157,8 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
     }
 
     this.endScope();
+
+    this.currentClass = enclosingClass;
   }
 
   visitExpressionStmt(stmt: Expression): void {
@@ -249,6 +260,11 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
   }
 
   visitThisExpr(expr: This): void {
+    if (this.currentClass === ClassType.NONE) {
+      error(expr.keyword, "Can't use 'this' outside of a class.");
+      return;
+    }
+
     this.resolveLocal(expr, expr.keyword);
   }
 
