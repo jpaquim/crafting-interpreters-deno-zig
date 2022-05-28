@@ -17,6 +17,7 @@ import type {
   Literal,
   Logical,
   Set as ExprSet,
+  Super,
   Ternary,
   This,
   Unary,
@@ -205,6 +206,24 @@ export class Interpreter implements ExprVisitor<LoxObject>, StmtVisitor<void> {
     return value;
   }
 
+  visitSuperExpr(expr: Super): LoxObject {
+    const distance = this.locals.get(expr) as number;
+    const superclass = this.environment.getAt(distance, 'super') as LoxClass;
+
+    const object = this.environment.getAt(distance - 1, 'this') as LoxInstance;
+
+    const method = superclass.findMethod(expr.method.lexeme);
+
+    if (method === undefined) {
+      throw new RuntimeError(
+        expr.method,
+        `Undefined property '${expr.method.lexeme}'.`,
+      );
+    }
+
+    return method.bind(object);
+  }
+
   visitTernaryExpr(expr: Ternary): LoxObject {
     if (this.isTruthy(this.evaluate(expr.predicate))) {
       return this.evaluate(expr.left);
@@ -310,6 +329,11 @@ export class Interpreter implements ExprVisitor<LoxObject>, StmtVisitor<void> {
 
     this.environment.define(stmt.name.lexeme, null);
 
+    if (stmt.superclass !== undefined) {
+      this.environment = new Environment(this.environment);
+      this.environment.define('super', superclass as LoxClass);
+    }
+
     const methods = new Map<string, LoxFunction>();
     for (const method of stmt.methods) {
       const fn = new LoxFunction(
@@ -321,6 +345,11 @@ export class Interpreter implements ExprVisitor<LoxObject>, StmtVisitor<void> {
     }
 
     const klass = new LoxClass(stmt.name.lexeme, methods, superclass);
+
+    if (superclass !== undefined) {
+      this.environment = this.environment.enclosing as Environment;
+    }
+
     this.environment.assign(stmt.name, klass);
   }
 

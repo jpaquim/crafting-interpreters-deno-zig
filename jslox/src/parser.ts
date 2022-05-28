@@ -9,6 +9,7 @@ import {
   Literal,
   Logical,
   Set as ExprSet,
+  Super,
   Ternary,
   This,
   Unary,
@@ -438,6 +439,16 @@ export class Parser {
 
     if (this.match(T.NUMBER, T.STRING)) {
       return new Literal(this.previous().literal);
+    }
+
+    if (this.match(T.SUPER)) {
+      const keyword = this.previous();
+      this.consume(T.DOT, "Expect '.' after 'super'.");
+      const method = this.consume(
+        T.IDENTIFIER,
+        'Expect superclass method name.',
+      );
+      return new Super(keyword, method);
     }
 
     if (this.match(T.THIS)) return new This(this.previous());

@@ -11,6 +11,7 @@ import type {
   Literal,
   Logical,
   Set as ExprSet,
+  Super,
   Ternary,
   This,
   Unary,
@@ -158,6 +159,9 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
 
     if (stmt.superclass !== undefined) {
       this.resolve(stmt.superclass);
+
+      this.beginScope();
+      this.scopes[this.scopes.length - 1].set('super', true);
     }
 
     this.beginScope();
@@ -172,6 +176,8 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
     }
 
     this.endScope();
+
+    if (stmt.superclass !== undefined) this.endScope();
 
     this.currentClass = enclosingClass;
   }
@@ -276,6 +282,10 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
   visitSetExpr(expr: ExprSet): void {
     this.resolve(expr.value);
     this.resolve(expr.object);
+  }
+
+  visitSuperExpr(expr: Super): void {
+    this.resolveLocal(expr, expr.keyword);
   }
 
   visitThisExpr(expr: This): void {

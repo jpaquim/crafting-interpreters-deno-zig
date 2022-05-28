@@ -15,6 +15,7 @@ defineAst(outputDir, 'Expr', [
   'Literal  : value: PlainObject',
   'Logical  : left: Expr, operator: Token, right: Expr',
   'Set      : object: Expr, name: Token, value: Expr',
+  'Super    : keyword: Token, method: Token',
   'This     : keyword: Token',
   'Ternary  : predicate: Expr, left: Expr, right: Expr',
   'Unary    : operator: Token, right: Expr',
