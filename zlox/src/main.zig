@@ -30,6 +30,7 @@ pub fn main() anyerror!void {
     const constant = addConstant(allocator, &chunk, 1.2);
     writeChunk(allocator, &chunk, @enumToInt(OpCode.op_constant), 123);
     writeChunk(allocator, &chunk, constant, 123);
+    writeChunk(allocator, &chunk, @enumToInt(OpCode.op_negate), 123);
 
     writeChunk(allocator, &chunk, @enumToInt(OpCode.op_return), 123);
 

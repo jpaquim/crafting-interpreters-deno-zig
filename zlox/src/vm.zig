@@ -67,6 +67,7 @@ fn run() !InterpretResult {
                 const constant = READ_CONSTANT();
                 push(constant);
             },
+            .op_negate => push(-pop()),
             .op_return => {
                 try printValue(pop());
                 try stdout.writeByte('\n');

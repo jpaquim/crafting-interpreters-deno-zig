@@ -25,8 +25,9 @@ pub fn disassembleInstruction(chunk: *Chunk, offset: usize) !usize {
 
     const instruction = @intToEnum(OpCode, chunk.code.?[offset]);
     switch (instruction) {
-        OpCode.op_constant => return constantInstruction("OP_CONSTANT", chunk, offset),
-        OpCode.op_return => return simpleInstruction("OP_RETURN", offset),
+        .op_constant => return constantInstruction("OP_CONSTANT", chunk, offset),
+        .op_negate => return simpleInstruction("OP_NEGATE", offset),
+        .op_return => return simpleInstruction("OP_RETURN", offset),
         // else => {
         //     stdout.print("Unknown opcode {d}\n", .{instruction});
         //     return offset + 1;
