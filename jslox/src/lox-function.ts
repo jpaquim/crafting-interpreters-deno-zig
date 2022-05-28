@@ -40,6 +40,8 @@ export class LoxFunction extends LoxCallable {
       interpreter.executeBlock(this.declaration.body, environment);
     } catch (error) {
       if (error instanceof Return) {
+        if (this.isInitializer) return this.closure.getAt(0, 'this');
+
         return error.value ?? null;
       } else throw error;
     }
