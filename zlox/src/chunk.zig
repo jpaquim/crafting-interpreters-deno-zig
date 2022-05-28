@@ -5,7 +5,7 @@ const FREE_ARRAY = memory.FREE_ARRAY;
 const GROW_ARRAY = memory.GROW_ARRAY;
 const GROW_CAPACITY = memory.GROW_CAPACITY;
 
-pub const OpCode = enum {
+pub const OpCode = enum(u8) {
     op_return,
 };
 
@@ -33,6 +33,6 @@ pub fn writeChunk(allocator: Allocator, chunk: *Chunk, byte: u8) void {
         chunk.code = GROW_ARRAY(allocator, u8, chunk.code, old_capacity, chunk.capacity);
     }
 
-    @ptrCast([*]u8, chunk.code.?)[chunk.count] = byte;
+    chunk.code.?[chunk.count] = byte;
     chunk.count += 1;
 }
