@@ -24,12 +24,19 @@ export class LoxClass extends LoxCallable {
     return this.name;
   }
 
-  override call(_interpreter: Interpreter, _args: LoxObject[]): LoxObject {
+  override call(interpreter: Interpreter, args: LoxObject[]): LoxObject {
     const instance = new LoxInstance(this);
+    const initializer = this.findMethod('init');
+    if (initializer !== undefined) {
+      initializer.bind(instance).call(interpreter, args);
+    }
+
     return instance;
   }
 
   override arity(): number {
-    return 0;
+    const initializer = this.findMethod('init');
+    if (initializer === undefined) return 0;
+    return initializer.arity();
   }
 }

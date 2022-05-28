@@ -11,8 +11,15 @@ export class LoxFunction extends LoxCallable {
   declaration: StmtFunction | ExprFunction;
   closure: Environment;
 
-  constructor(declaration: StmtFunction | ExprFunction, closure: Environment) {
+  isInitializer: boolean;
+
+  constructor(
+    declaration: StmtFunction | ExprFunction,
+    closure: Environment,
+    isInitializer: boolean,
+  ) {
     super();
+    this.isInitializer = isInitializer;
     this.closure = closure;
     this.declaration = declaration;
   }
@@ -20,7 +27,7 @@ export class LoxFunction extends LoxCallable {
   bind(instance: LoxInstance): LoxFunction {
     const environment = new Environment(this.closure);
     environment.define('this', instance);
-    return new LoxFunction(this.declaration, environment);
+    return new LoxFunction(this.declaration, environment, this.isInitializer);
   }
 
   override call(interpreter: Interpreter, args: LoxObject[]): LoxObject {
@@ -36,6 +43,8 @@ export class LoxFunction extends LoxCallable {
         return error.value ?? null;
       } else throw error;
     }
+
+    if (this.isInitializer) return this.closure.getAt(0, 'this');
     return null;
   }
 
