@@ -45,6 +45,7 @@ enum FunctionType {
 enum ClassType {
   NONE,
   CLASS,
+  SUBCLASS,
 }
 
 enum LoopType {
@@ -158,6 +159,7 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
     }
 
     if (stmt.superclass !== undefined) {
+      this.currentClass = ClassType.SUBCLASS;
       this.resolve(stmt.superclass);
 
       this.beginScope();
@@ -285,6 +287,12 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
   }
 
   visitSuperExpr(expr: Super): void {
+    if (this.currentClass === ClassType.NONE) {
+      error(expr.keyword, "Can't use 'super' outside of a class.");
+    } else if (this.currentClass !== ClassType.SUBCLASS) {
+      error(expr.keyword, "Can't use 'super' with no superclass.");
+    }
+
     this.resolveLocal(expr, expr.keyword);
   }
 
