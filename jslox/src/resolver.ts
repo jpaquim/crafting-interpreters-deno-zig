@@ -12,6 +12,7 @@ import type {
   Logical,
   Set as ExprSet,
   Ternary,
+  This,
   Unary,
   Variable,
   Visitor as ExprVisitor,
@@ -138,10 +139,15 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
     this.declare(stmt.name);
     this.define(stmt.name);
 
+    this.beginScope();
+    this.scopes[this.scopes.length - 1].set('this', true);
+
     for (const method of stmt.methods) {
       const declaration = FunctionType.METHOD;
       this.resolveFunction(method, declaration);
     }
+
+    this.endScope();
   }
 
   visitExpressionStmt(stmt: Expression): void {
@@ -240,6 +246,10 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
   visitSetExpr(expr: ExprSet): void {
     this.resolve(expr.value);
     this.resolve(expr.object);
+  }
+
+  visitThisExpr(expr: This): void {
+    this.resolveLocal(expr, expr.keyword);
   }
 
   visitTernaryExpr(expr: Ternary): void {

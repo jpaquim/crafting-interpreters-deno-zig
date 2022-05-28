@@ -10,6 +10,7 @@ import {
   Logical,
   Set as ExprSet,
   Ternary,
+  This,
   Unary,
   Variable,
 } from './expr.ts';
@@ -431,6 +432,8 @@ export class Parser {
     if (this.match(T.NUMBER, T.STRING)) {
       return new Literal(this.previous().literal);
     }
+
+    if (this.match(T.THIS)) return new This(this.previous());
 
     if (this.match(T.IDENTIFIER)) {
       return new Variable(this.previous());

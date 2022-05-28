@@ -18,6 +18,7 @@ import type {
   Logical,
   Set as ExprSet,
   Ternary,
+  This,
   Unary,
   Variable,
   Visitor as ExprVisitor,
@@ -210,6 +211,10 @@ export class Interpreter implements ExprVisitor<LoxObject>, StmtVisitor<void> {
     } else {
       return this.evaluate(expr.right);
     }
+  }
+
+  visitThisExpr(expr: This): LoxObject {
+    return this.lookUpVariable(expr.keyword, expr);
   }
 
   visitUnaryExpr(expr: Unary): LoxObject {

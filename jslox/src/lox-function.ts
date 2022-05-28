@@ -1,6 +1,7 @@
 import { Environment } from './environment.ts';
 import type { Function as ExprFunction } from './expr.ts';
 import { Interpreter } from './interpreter.ts';
+import { LoxInstance } from './lox-instance.ts';
 import { LoxCallable } from './lox-callable.ts';
 import { Return } from './return.ts';
 import type { Function as StmtFunction } from './stmt.ts';
@@ -14,6 +15,12 @@ export class LoxFunction extends LoxCallable {
     super();
     this.closure = closure;
     this.declaration = declaration;
+  }
+
+  bind(instance: LoxInstance): LoxFunction {
+    const environment = new Environment(this.closure);
+    environment.define('this', instance);
+    return new LoxFunction(this.declaration, environment);
   }
 
   override call(interpreter: Interpreter, args: LoxObject[]): LoxObject {
