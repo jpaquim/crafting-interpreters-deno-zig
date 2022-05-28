@@ -7,16 +7,26 @@ import type { LoxObject } from './types.ts';
 export class LoxClass extends LoxCallable {
   name: string;
   methods: Map<string, LoxFunction>;
+  superclass?: LoxClass;
 
-  constructor(name: string, methods: Map<string, LoxFunction>) {
+  constructor(
+    name: string,
+    methods: Map<string, LoxFunction>,
+    superclass?: LoxClass,
+  ) {
     super();
     this.name = name;
     this.methods = methods;
+    this.superclass = superclass;
   }
 
   findMethod(name: string): LoxFunction | undefined {
     if (this.methods.has(name)) {
       return this.methods.get(name);
+    }
+
+    if (this.superclass !== undefined) {
+      return this.superclass.findMethod(name);
     }
   }
 

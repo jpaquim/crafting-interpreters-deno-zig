@@ -23,7 +23,7 @@ defineAst(outputDir, 'Expr', [
 
 defineAst(outputDir, 'Stmt', [
   'Block      : statements: Stmt[]',
-  'Class      : name: Token, methods: Function[]',
+  'Class      : name: Token, methods: Function[], superclass?: Variable',
   'Break      : keyword: Token',
   'Continue   : keyword: Token',
   'Expression : expression: Expr',
@@ -136,6 +136,7 @@ function defineTypeImports(
     Stmt: '../src/stmt.ts',
     Token: '../src/token.ts',
     PlainObject: '../src/types.ts',
+    Variable: '../src/expr.ts',
   };
 
   const encoder = new TextEncoder();

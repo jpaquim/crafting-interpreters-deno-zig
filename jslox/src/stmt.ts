@@ -1,4 +1,5 @@
 import type { Token } from '../src/token.ts';
+import type { Variable } from '../src/expr.ts';
 import type { Expr } from '../src/expr.ts';
 
 export abstract class Stmt {
@@ -35,11 +36,13 @@ export class Block extends Stmt {
 export class Class extends Stmt {
   name: Token;
   methods: Function[];
+  superclass?: Variable;
 
-  constructor(name: Token, methods: Function[]) {
+  constructor(name: Token, methods: Function[], superclass?: Variable) {
     super();
     this.name = name;
     this.methods = methods;
+    this.superclass = superclass;
   }
 
   override accept<R>(visitor: Visitor<R>): R {

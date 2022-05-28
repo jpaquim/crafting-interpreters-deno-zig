@@ -297,6 +297,17 @@ export class Interpreter implements ExprVisitor<LoxObject>, StmtVisitor<void> {
   }
 
   visitClassStmt(stmt: Class): void {
+    let superclass;
+    if (stmt.superclass !== undefined) {
+      superclass = this.evaluate(stmt.superclass);
+      if (!(superclass instanceof LoxClass)) {
+        throw new RuntimeError(
+          stmt.superclass.name,
+          'Superclass must be a class.',
+        );
+      }
+    }
+
     this.environment.define(stmt.name.lexeme, null);
 
     const methods = new Map<string, LoxFunction>();
@@ -309,7 +320,7 @@ export class Interpreter implements ExprVisitor<LoxObject>, StmtVisitor<void> {
       methods.set(method.name.lexeme, fn);
     }
 
-    const klass = new LoxClass(stmt.name.lexeme, methods);
+    const klass = new LoxClass(stmt.name.lexeme, methods, superclass);
     this.environment.assign(stmt.name, klass);
   }
 
