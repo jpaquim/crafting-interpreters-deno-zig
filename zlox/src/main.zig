@@ -21,10 +21,10 @@ pub fn main() anyerror!void {
     initChunk(&chunk);
 
     const constant = addConstant(allocator, &chunk, 1.2);
-    writeChunk(allocator, &chunk, @enumToInt(OpCode.op_constant));
-    writeChunk(allocator, &chunk, constant);
+    writeChunk(allocator, &chunk, @enumToInt(OpCode.op_constant), 123);
+    writeChunk(allocator, &chunk, constant, 123);
 
-    writeChunk(allocator, &chunk, @enumToInt(OpCode.op_return));
+    writeChunk(allocator, &chunk, @enumToInt(OpCode.op_return), 123);
 
     try disassembleChunk(&chunk, "test chunk");
 

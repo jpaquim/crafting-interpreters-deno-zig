@@ -20,6 +20,7 @@ pub const Chunk = struct {
     count: usize,
     capacity: usize,
     code: ?[]u8,
+    lines: ?[]usize,
     constants: ValueArray,
 };
 
@@ -27,23 +28,27 @@ pub fn initChunk(chunk: *Chunk) void {
     chunk.count = 0;
     chunk.capacity = 0;
     chunk.code = null;
+    chunk.lines = null;
     initValueArray(&chunk.constants);
 }
 
 pub fn freeChunk(allocator: Allocator, chunk: *Chunk) void {
     FREE_ARRAY(allocator, u8, chunk.code, chunk.capacity);
+    FREE_ARRAY(allocator, usize, chunk.lines, chunk.capacity);
     freeValueArray(allocator, &chunk.constants);
     initChunk(chunk);
 }
 
-pub fn writeChunk(allocator: Allocator, chunk: *Chunk, byte: u8) void {
+pub fn writeChunk(allocator: Allocator, chunk: *Chunk, byte: u8, line: usize) void {
     if (chunk.capacity < chunk.count + 1) {
         const old_capacity = chunk.capacity;
         chunk.capacity = GROW_CAPACITY(old_capacity);
         chunk.code = GROW_ARRAY(allocator, u8, chunk.code, old_capacity, chunk.capacity);
+        chunk.lines = GROW_ARRAY(allocator, usize, chunk.lines, old_capacity, chunk.capacity);
     }
 
     chunk.code.?[chunk.count] = byte;
+    chunk.lines.?[chunk.count] = line;
     chunk.count += 1;
 }
 

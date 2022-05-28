@@ -17,6 +17,11 @@ pub fn disassembleChunk(chunk: *Chunk, name: []const u8) !void {
 
 fn disassembleInstruction(chunk: *Chunk, offset: usize) !usize {
     try stdout.print("{d:0>4} ", .{offset});
+    if (offset > 0 and chunk.lines.?[offset] == chunk.lines.?[offset - 1]) {
+        try stdout.writeAll("   | ");
+    } else {
+        try stdout.print("{d:>4} ", .{chunk.lines.?[offset]});
+    }
 
     const instruction = @intToEnum(OpCode, chunk.code.?[offset]);
     switch (instruction) {
