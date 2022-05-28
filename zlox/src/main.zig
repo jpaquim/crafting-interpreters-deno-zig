@@ -33,7 +33,7 @@ pub fn main() anyerror!void {
 
     writeChunk(allocator, &chunk, @enumToInt(OpCode.op_return), 123);
 
-    try disassembleChunk(&chunk, "test chunk");
+    // try disassembleChunk(&chunk, "test chunk");
 
     _ = try interpret(&chunk);
 
