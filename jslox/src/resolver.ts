@@ -18,6 +18,7 @@ import type {
   Block,
   Break,
   Continue,
+  Class,
   Expression,
   Function as StmtFunction,
   If,
@@ -128,6 +129,11 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
         "Can't continue from code outside for or while loop.",
       );
     }
+  }
+
+  visitClassStmt(stmt: Class): void {
+    this.declare(stmt.name);
+    this.define(stmt.name);
   }
 
   visitExpressionStmt(stmt: Expression): void {

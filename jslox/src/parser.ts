@@ -16,6 +16,7 @@ import {
   Block,
   Break,
   Continue,
+  Class,
   Expression,
   Function as StmtFunction,
   If,
@@ -52,6 +53,7 @@ export class Parser {
 
   declaration(): Stmt | null {
     try {
+      if (this.match(T.CLASS)) return this.classDeclaration();
       if (this.match(T.FUN)) return this.function('function');
       if (this.match(T.VAR)) return this.varDeclaration();
 
@@ -62,6 +64,20 @@ export class Parser {
         return null;
       } else throw error;
     }
+  }
+
+  classDeclaration(): Stmt {
+    const name = this.consume(T.IDENTIFIER, 'Expect class name.');
+    this.consume(T.LEFT_BRACE, "Expect '{' before class body.");
+
+    const methods = [];
+    while (!this.check(T.RIGHT_BRACE) && !this.isAtEnd()) {
+      methods.push(this.function('method'));
+    }
+
+    this.consume(T.RIGHT_BRACE, "Expect '}' after class body.");
+
+    return new Class(name, methods);
   }
 
   statement(): Stmt {

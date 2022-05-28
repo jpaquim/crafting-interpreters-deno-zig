@@ -7,6 +7,7 @@ export abstract class Stmt {
 
 export interface Visitor<R> {
   visitBlockStmt(stmt: Block): R;
+  visitClassStmt(stmt: Class): R;
   visitBreakStmt(stmt: Break): R;
   visitContinueStmt(stmt: Continue): R;
   visitExpressionStmt(stmt: Expression): R;
@@ -28,6 +29,21 @@ export class Block extends Stmt {
 
   override accept<R>(visitor: Visitor<R>): R {
     return visitor.visitBlockStmt(this);
+  }
+}
+
+export class Class extends Stmt {
+  name: Token;
+  methods: Function[];
+
+  constructor(name: Token, methods: Function[]) {
+    super();
+    this.name = name;
+    this.methods = methods;
+  }
+
+  override accept<R>(visitor: Visitor<R>): R {
+    return visitor.visitClassStmt(this);
   }
 }
 

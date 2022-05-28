@@ -1,5 +1,6 @@
-import type { Callable } from './callable.ts';
+import type { LoxCallable } from './lox-callable.ts';
+import type { LoxClass } from './lox-class.ts';
 
 export type PlainObject = boolean | number | string | null;
 
-export type LoxObject = PlainObject | Callable;
+export type LoxObject = LoxCallable | LoxClass | PlainObject;

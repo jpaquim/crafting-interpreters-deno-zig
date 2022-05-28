@@ -20,6 +20,7 @@ defineAst(outputDir, 'Expr', [
 
 defineAst(outputDir, 'Stmt', [
   'Block      : statements: Stmt[]',
+  'Class      : name: Token, methods: Function[]',
   'Break      : keyword: Token',
   'Continue   : keyword: Token',
   'Expression : expression: Expr',
@@ -136,9 +137,11 @@ function defineTypeImports(
 
   const encoder = new TextEncoder();
 
+  const selfTypes: string[] = [];
   const imports = [
     ...types.reduce((importsSet, type) => {
       const separatorIndex = type.indexOf(':');
+      selfTypes.push(type.slice(0, separatorIndex - 1).trim());
       const fields = type
         .slice(separatorIndex + 1)
         .split(', ')
@@ -156,6 +159,7 @@ function defineTypeImports(
   ];
 
   for (const type of imports) {
+    if (selfTypes.includes(type)) continue;
     if (!typeImports[type]) throw new Error(`Unknown type: ${type}`);
     writer.write(
       encoder.encode(`import type { ${type} } from '${typeImports[type]}';\n`),

@@ -1,5 +1,6 @@
-import { Callable } from './callable.ts';
 import { Environment } from './environment.ts';
+import { LoxCallable } from './lox-callable.ts';
+import { LoxClass } from './lox-class.ts';
 import { LoxFunction } from './lox-function.ts';
 import { runtimeError } from './mod.ts';
 import { Return } from './return.ts';
@@ -22,6 +23,7 @@ import type {
   Block,
   Break,
   Continue,
+  Class,
   Expression,
   Function,
   If,
@@ -46,7 +48,7 @@ export class Interpreter implements ExprVisitor<LoxObject>, StmtVisitor<void> {
   constructor() {
     this.globals.define(
       'clock',
-      new (class extends Callable {
+      new (class extends LoxCallable {
         override arity(): number {
           return 0;
         }
@@ -142,11 +144,11 @@ export class Interpreter implements ExprVisitor<LoxObject>, StmtVisitor<void> {
       args.push(this.evaluate(argument));
     }
 
-    if (!(callee instanceof Callable)) {
+    if (!(callee instanceof LoxCallable)) {
       throw new RuntimeError(expr.paren, 'Can only call functions and classes');
     }
 
-    const fn = callee as Callable;
+    const fn = callee as LoxCallable;
 
     if (args.length !== fn.arity()) {
       throw new RuntimeError(
@@ -263,6 +265,12 @@ export class Interpreter implements ExprVisitor<LoxObject>, StmtVisitor<void> {
 
   visitContinueStmt(_stmt: Continue): void {
     throw new ContinueError();
+  }
+
+  visitClassStmt(stmt: Class): void {
+    this.environment.define(stmt.name.lexeme, null);
+    const klass = new LoxClass(stmt.name.lexeme);
+    this.environment.assign(stmt.name, klass);
   }
 
   visitExpressionStmt(stmt: Expression): void {

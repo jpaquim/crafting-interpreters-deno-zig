@@ -1,12 +1,12 @@
-import { Callable } from './callable.ts';
 import { Environment } from './environment.ts';
 import type { Function as ExprFunction } from './expr.ts';
 import { Interpreter } from './interpreter.ts';
+import { LoxCallable } from './lox-callable.ts';
 import { Return } from './return.ts';
 import type { Function as StmtFunction } from './stmt.ts';
 import type { LoxObject } from './types.ts';
 
-export class LoxFunction extends Callable {
+export class LoxFunction extends LoxCallable {
   declaration: StmtFunction | ExprFunction;
   closure: Environment;
 
