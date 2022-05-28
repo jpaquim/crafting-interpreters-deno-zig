@@ -197,11 +197,15 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
 
   visitFunctionExpr(expr: ExprFunction) {
     if (expr.name !== undefined) {
+      this.beginScope();
       this.declare(expr.name);
       this.define(expr.name);
+      this.resolveLocal(expr, expr.name);
+      this.resolveFunction(expr, FunctionType.FUNCTION);
+      this.endScope();
+    } else {
+      this.resolveFunction(expr, FunctionType.FUNCTION);
     }
-
-    this.resolveFunction(expr, FunctionType.FUNCTION);
   }
 
   visitGroupingExpr(expr: Grouping): void {

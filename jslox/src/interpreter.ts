@@ -209,7 +209,7 @@ export class Interpreter implements ExprVisitor<LoxObject>, StmtVisitor<void> {
     if (distance !== undefined) {
       return this.environment.getAt(distance, name.lexeme);
     } else {
-      return this.globals.get(name) as LoxObject;
+      return this.globals.get(name);
     }
   }
 
@@ -295,7 +295,7 @@ export class Interpreter implements ExprVisitor<LoxObject>, StmtVisitor<void> {
   }
 
   visitVarStmt(stmt: Var): void {
-    let value;
+    let value = null;
     const initializer = stmt.initializer;
     if (initializer !== undefined) {
       value = this.evaluate(initializer);
@@ -332,6 +332,12 @@ export class Interpreter implements ExprVisitor<LoxObject>, StmtVisitor<void> {
   }
 
   visitFunctionExpr(expr: ExprFunction): LoxObject {
+    if (expr.name) {
+      const environment = new Environment(this.environment);
+      const fn = new LoxFunction(expr, environment);
+      environment.define(expr.name.lexeme, fn);
+      return fn;
+    }
     const fn = new LoxFunction(expr, this.environment);
     return fn;
   }
