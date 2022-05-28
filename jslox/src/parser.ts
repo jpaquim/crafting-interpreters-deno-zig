@@ -35,7 +35,6 @@ export class Parser {
   current = 0;
 
   repl: boolean;
-  loop = false;
 
   constructor(tokens: Token[], repl: boolean) {
     this.tokens = tokens;
@@ -79,23 +78,15 @@ export class Parser {
   }
 
   breakStatement(): Stmt {
-    if (!this.loop)
-      this.error(
-        this.previous(),
-        "'break' only allowed inside for or while loop.",
-      );
+    const keyword = this.previous();
     this.consume(T.SEMICOLON, "Expect ';' after break.");
-    return new Break();
+    return new Break(keyword);
   }
 
   continueStatement(): Stmt {
-    if (!this.loop)
-      this.error(
-        this.previous(),
-        "'continue' only allowed inside for or while loop.",
-      );
+    const keyword = this.previous();
     this.consume(T.SEMICOLON, "Expect ';' after continue.");
-    return new Continue();
+    return new Continue(keyword);
   }
 
   forStatement(): Stmt {
@@ -122,9 +113,7 @@ export class Parser {
     }
     this.consume(T.RIGHT_PAREN, "Expect ')' after for clauses.");
 
-    this.loop = true;
     let body = this.statement();
-    this.loop = false;
 
     if (increment !== null) {
       body = new Block([body, new Expression(increment)]);
@@ -229,10 +218,7 @@ export class Parser {
     const condition = this.expression();
     this.consume(T.RIGHT_PAREN, "Expect ')' after condition.");
 
-    this.loop = true;
     const body = this.statement();
-    this.loop = false;
-
     return new While(condition, body);
   }
 

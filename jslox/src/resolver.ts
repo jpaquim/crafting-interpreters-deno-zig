@@ -35,10 +35,16 @@ enum FunctionType {
   FUNCTION,
 }
 
+enum LoopType {
+  NONE,
+  WHILE,
+}
+
 export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
   interpreter: Interpreter;
   scopes: Map<string, boolean>[] = [];
   currentFunction = FunctionType.NONE;
+  currentLoop = LoopType.NONE;
 
   constructor(interpreter: Interpreter) {
     this.interpreter = interpreter;
@@ -109,9 +115,20 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
     this.endScope();
   }
 
-  visitBreakStmt(_stmt: Break): void {}
+  visitBreakStmt(stmt: Break): void {
+    if (this.currentLoop === LoopType.NONE) {
+      error(stmt.keyword, "Can't break from code outside for or while loop.");
+    }
+  }
 
-  visitContinueStmt(_stmt: Continue): void {}
+  visitContinueStmt(stmt: Continue): void {
+    if (this.currentLoop === LoopType.NONE) {
+      error(
+        stmt.keyword,
+        "Can't continue from code outside for or while loop.",
+      );
+    }
+  }
 
   visitExpressionStmt(stmt: Expression): void {
     this.resolve(stmt.expression);
@@ -154,7 +171,10 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
 
   visitWhileStmt(stmt: While): void {
     this.resolve(stmt.condition);
+    const enclosingLoop = this.currentLoop;
+    this.currentLoop = LoopType.WHILE;
     this.resolve(stmt.body);
+    this.currentLoop = enclosingLoop;
   }
 
   visitAssignExpr(expr: Assign): void {

@@ -20,8 +20,8 @@ defineAst(outputDir, 'Expr', [
 
 defineAst(outputDir, 'Stmt', [
   'Block      : statements: Stmt[]',
-  'Break      : ',
-  'Continue   : ',
+  'Break      : keyword: Token',
+  'Continue   : keyword: Token',
   'Expression : expression: Expr',
   'Function   : name: Token, params: Token[], body: Stmt[]',
   'If         : condition: Expr, thenBranch: Stmt, elseBranch?: Stmt',

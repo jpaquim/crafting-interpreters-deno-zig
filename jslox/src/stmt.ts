@@ -1,5 +1,5 @@
-import type { Expr } from '../src/expr.ts';
 import type { Token } from '../src/token.ts';
+import type { Expr } from '../src/expr.ts';
 
 export abstract class Stmt {
   abstract accept<R>(visitor: Visitor<R>): R;
@@ -32,6 +32,12 @@ export class Block extends Stmt {
 }
 
 export class Break extends Stmt {
+  keyword: Token;
+
+  constructor(keyword: Token) {
+    super();
+    this.keyword = keyword;
+  }
 
   override accept<R>(visitor: Visitor<R>): R {
     return visitor.visitBreakStmt(this);
@@ -39,6 +45,12 @@ export class Break extends Stmt {
 }
 
 export class Continue extends Stmt {
+  keyword: Token;
+
+  constructor(keyword: Token) {
+    super();
+    this.keyword = keyword;
+  }
 
   override accept<R>(visitor: Visitor<R>): R {
     return visitor.visitContinueStmt(this);
