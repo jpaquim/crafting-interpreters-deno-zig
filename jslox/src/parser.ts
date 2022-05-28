@@ -4,9 +4,11 @@ import {
   Call,
   Expr,
   Function as ExprFunction,
+  Get,
   Grouping,
   Literal,
   Logical,
+  Set as ExprSet,
   Ternary,
   Unary,
   Variable,
@@ -287,6 +289,9 @@ export class Parser {
       if (expr instanceof Variable) {
         const name = expr.name;
         return new Assign(name, value);
+      } else if (expr instanceof Get) {
+        const get = expr as Get;
+        return new ExprSet(get.object, get.name, value);
       }
 
       this.error(equals, 'Invalid assignment target.');
@@ -390,6 +395,12 @@ export class Parser {
     while (true) {
       if (this.match(T.LEFT_PAREN)) {
         expr = this.finishCall(expr);
+      } else if (this.match(T.DOT)) {
+        const name = this.consume(
+          T.IDENTIFIER,
+          "Expect property name after '.'.",
+        );
+        expr = new Get(expr, name);
       } else break;
     }
 

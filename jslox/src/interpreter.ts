@@ -2,6 +2,7 @@ import { Environment } from './environment.ts';
 import { LoxCallable } from './lox-callable.ts';
 import { LoxClass } from './lox-class.ts';
 import { LoxFunction } from './lox-function.ts';
+import { LoxInstance } from './lox-instance.ts';
 import { runtimeError } from './mod.ts';
 import { Return } from './return.ts';
 import { RuntimeError } from './runtime-error.ts';
@@ -11,9 +12,11 @@ import type {
   Call,
   Expr,
   Function as ExprFunction,
+  Get,
   Grouping,
   Literal,
   Logical,
+  Set as ExprSet,
   Ternary,
   Unary,
   Variable,
@@ -160,6 +163,15 @@ export class Interpreter implements ExprVisitor<LoxObject>, StmtVisitor<void> {
     return fn.call(this, args);
   }
 
+  visitGetExpr(expr: Get): LoxObject {
+    const object = this.evaluate(expr.object);
+    if (object instanceof LoxInstance) {
+      return object.get(expr.name);
+    }
+
+    throw new RuntimeError(expr.name, 'Only instances have properties.');
+  }
+
   visitGroupingExpr(expr: Grouping): LoxObject {
     return this.evaluate(expr.expression);
   }
@@ -178,6 +190,18 @@ export class Interpreter implements ExprVisitor<LoxObject>, StmtVisitor<void> {
     }
 
     return this.evaluate(expr.right);
+  }
+
+  visitSetExpr(expr: ExprSet): LoxObject {
+    const object = this.evaluate(expr.object);
+
+    if (!(object instanceof LoxInstance)) {
+      throw new RuntimeError(expr.name, 'Only instances have fields.');
+    }
+
+    const value = this.evaluate(expr.value);
+    object.set(expr.name, value);
+    return value;
   }
 
   visitTernaryExpr(expr: Ternary): LoxObject {

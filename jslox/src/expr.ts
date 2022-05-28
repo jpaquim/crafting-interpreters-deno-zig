@@ -10,10 +10,12 @@ export interface Visitor<R> {
   visitAssignExpr(expr: Assign): R;
   visitBinaryExpr(expr: Binary): R;
   visitCallExpr(expr: Call): R;
+  visitGetExpr(expr: Get): R;
   visitFunctionExpr(expr: Function): R;
   visitGroupingExpr(expr: Grouping): R;
   visitLiteralExpr(expr: Literal): R;
   visitLogicalExpr(expr: Logical): R;
+  visitSetExpr(expr: Set): R;
   visitTernaryExpr(expr: Ternary): R;
   visitUnaryExpr(expr: Unary): R;
   visitVariableExpr(expr: Variable): R;
@@ -65,6 +67,21 @@ export class Call extends Expr {
 
   override accept<R>(visitor: Visitor<R>): R {
     return visitor.visitCallExpr(this);
+  }
+}
+
+export class Get extends Expr {
+  object: Expr;
+  name: Token;
+
+  constructor(object: Expr, name: Token) {
+    super();
+    this.object = object;
+    this.name = name;
+  }
+
+  override accept<R>(visitor: Visitor<R>): R {
+    return visitor.visitGetExpr(this);
   }
 }
 
@@ -125,6 +142,23 @@ export class Logical extends Expr {
 
   override accept<R>(visitor: Visitor<R>): R {
     return visitor.visitLogicalExpr(this);
+  }
+}
+
+export class Set extends Expr {
+  object: Expr;
+  name: Token;
+  value: Expr;
+
+  constructor(object: Expr, name: Token, value: Expr) {
+    super();
+    this.object = object;
+    this.name = name;
+    this.value = value;
+  }
+
+  override accept<R>(visitor: Visitor<R>): R {
+    return visitor.visitSetExpr(this);
   }
 }
 

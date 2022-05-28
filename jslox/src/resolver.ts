@@ -6,9 +6,11 @@ import type {
   Call,
   Expr,
   Function as ExprFunction,
+  Get,
   Grouping,
   Literal,
   Logical,
+  Set as ExprSet,
   Ternary,
   Unary,
   Variable,
@@ -214,6 +216,10 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
     }
   }
 
+  visitGetExpr(expr: Get): void {
+    this.resolve(expr.object);
+  }
+
   visitGroupingExpr(expr: Grouping): void {
     this.resolve(expr.expression);
   }
@@ -223,6 +229,11 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
   visitLogicalExpr(expr: Logical): void {
     this.resolve(expr.left);
     this.resolve(expr.right);
+  }
+
+  visitSetExpr(expr: ExprSet): void {
+    this.resolve(expr.value);
+    this.resolve(expr.object);
   }
 
   visitTernaryExpr(expr: Ternary): void {
