@@ -36,6 +36,7 @@ import type { Token } from './token.ts';
 enum FunctionType {
   NONE,
   FUNCTION,
+  METHOD,
 }
 
 enum LoopType {
@@ -136,6 +137,11 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
   visitClassStmt(stmt: Class): void {
     this.declare(stmt.name);
     this.define(stmt.name);
+
+    for (const method of stmt.methods) {
+      const declaration = FunctionType.METHOD;
+      this.resolveFunction(method, declaration);
+    }
   }
 
   visitExpressionStmt(stmt: Expression): void {
