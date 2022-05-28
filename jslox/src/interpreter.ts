@@ -1,6 +1,9 @@
 import { Callable } from './callable.ts';
 import { Environment } from './environment.ts';
+import { LoxFunction } from './lox-function.ts';
+import { runtimeError } from './mod.ts';
 import { Return } from './return.ts';
+import { RuntimeError } from './runtime-error.ts';
 import type {
   Assign,
   Binary,
@@ -29,9 +32,6 @@ import type {
   Visitor as StmtVisitor,
   While,
 } from './stmt.ts';
-import { runtimeError } from './mod.ts';
-import { LoxFunction } from './lox-function.ts';
-import { RuntimeError } from './runtime-error.ts';
 import type { Token } from './token.ts';
 import { TokenType } from './token-type.ts';
 import type { LoxObject } from './types.ts';
@@ -41,6 +41,7 @@ const T = TokenType;
 export class Interpreter implements ExprVisitor<LoxObject>, StmtVisitor<void> {
   globals = new Environment();
   environment = this.globals;
+  locals = new Map<Expr, number>();
 
   constructor() {
     this.globals.define(
@@ -200,9 +201,16 @@ export class Interpreter implements ExprVisitor<LoxObject>, StmtVisitor<void> {
   }
 
   visitVariableExpr(expr: Variable): LoxObject {
-    const value = this.environment.get(expr.name);
-    if (value !== undefined) return value;
-    throw new RuntimeError(expr.name, 'Variable not initialized.');
+    return this.lookUpVariable(expr.name, expr);
+  }
+
+  lookUpVariable(name: Token, expr: Expr): LoxObject {
+    const distance = this.locals.get(expr);
+    if (distance !== undefined) {
+      return this.environment.getAt(distance, name.lexeme);
+    } else {
+      return this.globals.get(name) as LoxObject;
+    }
   }
 
   checkNumberOperand(operator: Token, operand: LoxObject): void {
@@ -226,6 +234,10 @@ export class Interpreter implements ExprVisitor<LoxObject>, StmtVisitor<void> {
 
   execute(statement: Stmt): void {
     return statement.accept(this);
+  }
+
+  resolve(expr: Expr, depth: number): void {
+    this.locals.set(expr, depth);
   }
 
   executeBlock(statements: Stmt[], environment: Environment) {
@@ -308,7 +320,14 @@ export class Interpreter implements ExprVisitor<LoxObject>, StmtVisitor<void> {
 
   visitAssignExpr(expr: Assign): LoxObject {
     const value = this.evaluate(expr.value);
-    this.environment.assign(expr.name, value);
+
+    const distance = this.locals.get(expr);
+    if (distance !== undefined) {
+      this.environment.assignAt(distance, expr.name, value);
+    } else {
+      this.globals.assign(expr.name, value);
+    }
+
     return value;
   }
 

@@ -1,5 +1,6 @@
 import { Interpreter } from './interpreter.ts';
 import { Parser } from './parser.ts';
+import { Resolver } from './resolver.ts';
 import { RuntimeError } from './runtime-error.ts';
 import { Scanner } from './scanner.ts';
 import { Token } from './token.ts';
@@ -46,6 +47,9 @@ function run(source: string, repl = false): void {
   const statements = parser.parse();
 
   if (hadError) return;
+
+  const resolver = new Resolver(interpreter);
+  resolver.resolve(statements);
 
   interpreter.interpret(statements);
 }
