@@ -30,9 +30,15 @@ import type {
 } from './stmt.ts';
 import type { Token } from './token.ts';
 
+enum FunctionType {
+  NONE,
+  FUNCTION,
+}
+
 export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
   interpreter: Interpreter;
   scopes: Map<string, boolean>[] = [];
+  currentFunction = FunctionType.NONE;
 
   constructor(interpreter: Interpreter) {
     this.interpreter = interpreter;
@@ -50,7 +56,10 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
     }
   }
 
-  resolveFunction(fn: StmtFunction | ExprFunction): void {
+  resolveFunction(fn: StmtFunction | ExprFunction, type: FunctionType): void {
+    const enclosingFunction = this.currentFunction;
+    this.currentFunction = type;
+
     this.beginScope();
     for (const param of fn.params) {
       this.declare(param);
@@ -58,6 +67,7 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
     }
     this.resolve(fn.body);
     this.endScope();
+    this.currentFunction = enclosingFunction;
   }
 
   beginScope(): void {
@@ -72,6 +82,10 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
     if (this.scopes.length === 0) return;
 
     const scope = this.scopes[this.scopes.length - 1];
+    if (scope.has(name.lexeme)) {
+      error(name, 'Already a variable with this name in this scope.');
+    }
+
     scope.set(name.lexeme, false);
   }
 
@@ -107,7 +121,7 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
     this.declare(stmt.name);
     this.define(stmt.name);
 
-    this.resolveFunction(stmt);
+    this.resolveFunction(stmt, FunctionType.FUNCTION);
   }
 
   visitIfStmt(stmt: If): void {
@@ -121,6 +135,10 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
   }
 
   visitReturnStmt(stmt: StmtReturn): void {
+    if (this.currentFunction === FunctionType.NONE) {
+      error(stmt.keyword, "Can't return from top-level code.");
+    }
+
     if (stmt.value !== undefined) {
       this.resolve(stmt.value);
     }
@@ -163,7 +181,7 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
       this.define(expr.name);
     }
 
-    this.resolveFunction(expr);
+    this.resolveFunction(expr, FunctionType.FUNCTION);
   }
 
   visitGroupingExpr(expr: Grouping): void {

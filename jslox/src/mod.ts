@@ -51,6 +51,8 @@ function run(source: string, repl = false): void {
   const resolver = new Resolver(interpreter);
   resolver.resolve(statements);
 
+  if (hadError) return;
+
   interpreter.interpret(statements);
 }
 
