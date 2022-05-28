@@ -15,7 +15,7 @@ pub fn disassembleChunk(chunk: *Chunk, name: []const u8) !void {
     while (offset < chunk.count) : (offset = try disassembleInstruction(chunk, offset)) {}
 }
 
-fn disassembleInstruction(chunk: *Chunk, offset: usize) !usize {
+pub fn disassembleInstruction(chunk: *Chunk, offset: usize) !usize {
     try stdout.print("{d:0>4} ", .{offset});
     if (offset > 0 and chunk.lines.?[offset] == chunk.lines.?[offset - 1]) {
         try stdout.writeAll("   | ");
