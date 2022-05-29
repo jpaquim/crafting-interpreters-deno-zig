@@ -1,5 +1,7 @@
 const std = @import("std");
-const initScanner = @import("./scanner.zig").initScanner;
+const scanner = @import("./scanner.zig");
+const initScanner = scanner.initScanner;
+const scanToken = scanner.scanToken;
 
 const stdout = std.io.getStdOut().writer();
 
@@ -14,9 +16,8 @@ pub fn compile(source: []const u8) !void {
         } else {
             try stdout.writeAll("   | ");
         }
-        const slice = @as([*]Token, token.start)[0..token.length];
-        try stdout.print("{d:2} '{s}'\n", .{ token.t_type, slice });
+        try stdout.print("{d:2} '{s}'\n", .{ token.t_type, token.start[0..token.length] });
 
-        if (token.t_type == .eof) break;
+        if (token.t_type == .EOF) break;
     }
 }

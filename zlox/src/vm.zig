@@ -99,7 +99,7 @@ fn run() !InterpretResult {
 }
 
 pub fn interpret(source: []const u8) !InterpretResult {
-    compile(source);
+    try compile(source);
     return .ok;
 }
 
