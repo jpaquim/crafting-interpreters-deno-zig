@@ -2,6 +2,7 @@ const std = @import("std");
 const chk = @import("./chunk.zig");
 const Chunk = chk.Chunk;
 const OpCode = chk.OpCode;
+const compile = @import("./compiler.zig").compile;
 const DEBUG_TRACE_EXECUTION = @import("./common.zig").DEBUG_TRACE_EXECUTION;
 const disassembleInstruction = @import("./debug.zig").disassembleInstruction;
 const v = @import("./value.zig");
@@ -67,6 +68,26 @@ fn run() !InterpretResult {
                 const constant = READ_CONSTANT();
                 push(constant);
             },
+            .op_add => {
+                const b = pop();
+                const a = pop();
+                push(a + b);
+            },
+            .op_subtract => {
+                const b = pop();
+                const a = pop();
+                push(a - b);
+            },
+            .op_multiply => {
+                const b = pop();
+                const a = pop();
+                push(a * b);
+            },
+            .op_divide => {
+                const b = pop();
+                const a = pop();
+                push(a / b);
+            },
             .op_negate => push(-pop()),
             .op_return => {
                 try printValue(pop());
@@ -77,10 +98,9 @@ fn run() !InterpretResult {
     }
 }
 
-pub fn interpret(chunk: *Chunk) !InterpretResult {
-    vm.chunk = chunk;
-    vm.ip = @ptrCast(*u8, vm.chunk.code.?.ptr);
-    return run();
+pub fn interpret(source: []const u8) !InterpretResult {
+    compile(source);
+    return .ok;
 }
 
 fn push(value: Value) void {
