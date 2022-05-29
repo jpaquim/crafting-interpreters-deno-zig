@@ -58,6 +58,7 @@ const Token = struct {
 const Scanner = struct {
     start: [*]const u8,
     current: [*]const u8,
+    end: [*]const u8,
     length: usize,
     line: usize,
 };
@@ -65,10 +66,13 @@ const Scanner = struct {
 var scanner: Scanner = undefined;
 
 pub fn initScanner(source: []const u8) void {
-    scanner.start = source.ptr;
-    scanner.current = source.ptr;
-    scanner.length = source.len;
-    scanner.line = 1;
+    scanner = .{
+        .start = source.ptr,
+        .current = source.ptr,
+        .end = source.ptr[source.len + 1 .. source.len + 1].ptr,
+        .length = source.len,
+        .line = 1,
+    };
 }
 
 fn isAlpha(c: u8) bool {
@@ -80,7 +84,7 @@ fn isDigit(c: u8) bool {
 }
 
 fn isAtEnd() bool {
-    return @ptrToInt(scanner.current) >= @ptrToInt(scanner.start + scanner.length);
+    return scanner.current == scanner.end;
 }
 
 fn advance() u8 {
@@ -124,7 +128,7 @@ fn errorToken(message: []const u8) Token {
 }
 
 fn skipWhitespace() void {
-    while (true) {
+    while (!isAtEnd()) {
         const c = peek();
         switch (c) {
             ' ', '\r', '\t' => _ = advance(),

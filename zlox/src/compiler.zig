@@ -11,12 +11,12 @@ pub fn compile(source: []const u8) !void {
     while (true) {
         const token = scanToken();
         if (token.line != line) {
-            try stdout.print("{d:4}", .{token.line});
+            try stdout.print("{d:4} ", .{token.line});
             line = token.line;
         } else {
             try stdout.writeAll("   | ");
         }
-        try stdout.print("{d:2} '{s}'\n", .{ token.t_type, token.start[0..token.length] });
+        try stdout.print("{d:2} '{s}'\n", .{ @enumToInt(token.t_type), token.start[0..token.length] });
 
         if (token.t_type == .EOF) break;
     }

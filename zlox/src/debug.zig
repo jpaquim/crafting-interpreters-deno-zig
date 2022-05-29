@@ -23,8 +23,8 @@ pub fn disassembleInstruction(chunk: *Chunk, offset: usize) !usize {
         try stdout.print("{d:>4} ", .{chunk.lines.?[offset]});
     }
 
-    const instruction = @intToEnum(OpCode, chunk.code.?[offset]);
-    switch (instruction) {
+    const instruction = chunk.code.?[offset];
+    switch (@intToEnum(OpCode, instruction)) {
         .op_constant => return constantInstruction("OP_CONSTANT", chunk, offset),
         .op_add => return simpleInstruction("OP_ADD", offset),
         .op_subtract => return simpleInstruction("OP_SUBTRACT", offset),
@@ -32,11 +32,9 @@ pub fn disassembleInstruction(chunk: *Chunk, offset: usize) !usize {
         .op_divide => return simpleInstruction("OP_DIVIDE", offset),
         .op_negate => return simpleInstruction("OP_NEGATE", offset),
         .op_return => return simpleInstruction("OP_RETURN", offset),
-        // else => {
-        //     stdout.print("Unknown opcode {d}\n", .{instruction});
-        //     return offset + 1;
-        // },
     }
+    stdout.print("Unknown opcode {d}\n", .{instruction});
+    return offset + 1;
 }
 
 fn constantInstruction(name: []const u8, chunk: *Chunk, offset: usize) !usize {
