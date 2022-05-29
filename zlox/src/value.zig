@@ -88,3 +88,12 @@ pub fn printValue(value: Value) !void {
         .number => try stdout.print("{d}", .{AS_NUMBER(value)}),
     }
 }
+
+pub fn valuesEqual(a: Value, b: Value) bool {
+    if (a.v_type != b.v_type) return false;
+    switch (a.v_type) {
+        .bool => return AS_BOOL(a) == AS_BOOL(b),
+        .nil => return true,
+        .number => return AS_NUMBER(a) == AS_NUMBER(b),
+    }
+}

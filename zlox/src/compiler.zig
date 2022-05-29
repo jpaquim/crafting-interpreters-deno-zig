@@ -143,6 +143,12 @@ fn binary(allocator: Allocator) void {
     parsePrecedence(allocator, @intToEnum(Precedence, @enumToInt(rule.precedence) + 1));
 
     switch (operator_type) {
+        .BANG_EQUAL => emitBytes(allocator, @enumToInt(OpCode.op_equal), @enumToInt(OpCode.op_not)),
+        .EQUAL_EQUAL => emitByte(allocator, @enumToInt(OpCode.op_equal)),
+        .GREATER => emitByte(allocator, @enumToInt(OpCode.op_greater)),
+        .GREATER_EQUAL => emitBytes(allocator, @enumToInt(OpCode.op_less), @enumToInt(OpCode.op_not)),
+        .LESS => emitByte(allocator, @enumToInt(OpCode.op_less)),
+        .LESS_EQUAL => emitBytes(allocator, @enumToInt(OpCode.op_greater), @enumToInt(OpCode.op_not)),
         .PLUS => emitByte(allocator, @enumToInt(OpCode.op_add)),
         .MINUS => emitByte(allocator, @enumToInt(OpCode.op_subtract)),
         .STAR => emitByte(allocator, @enumToInt(OpCode.op_multiply)),
@@ -199,13 +205,13 @@ const rules = [_]ParseRule{
     .{ .infix = binary, .precedence = .FACTOR }, // SLASH
     .{ .infix = binary, .precedence = .FACTOR }, // STAR
     .{ .prefix = unary, .precedence = .NONE }, // BANG
-    .{ .precedence = .NONE }, // BANG_EQUAL
+    .{ .infix = binary, .precedence = .EQUALITY }, // BANG_EQUAL
     .{ .precedence = .NONE }, // EQUAL
-    .{ .precedence = .NONE }, // EQUAL_EQUAL
-    .{ .precedence = .NONE }, // GREATER
-    .{ .precedence = .NONE }, // GREATER_EQUAL
-    .{ .precedence = .NONE }, // LESS
-    .{ .precedence = .NONE }, // LESS_EQUAL
+    .{ .infix = binary, .precedence = .COMPARISON }, // EQUAL_EQUAL
+    .{ .infix = binary, .precedence = .COMPARISON }, // GREATER
+    .{ .infix = binary, .precedence = .COMPARISON }, // GREATER_EQUAL
+    .{ .infix = binary, .precedence = .COMPARISON }, // LESS
+    .{ .infix = binary, .precedence = .COMPARISON }, // LESS_EQUAL
     .{ .precedence = .NONE }, // IDENTIFIER
     .{ .precedence = .NONE }, // STRING
     .{ .prefix = number, .precedence = .NONE }, // NUMBER

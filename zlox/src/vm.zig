@@ -14,6 +14,7 @@ const disassembleInstruction = @import("./debug.zig").disassembleInstruction;
 const v = @import("./value.zig");
 const Value = v.Value;
 const printValue = v.printValue;
+const valuesEqual = v.valuesEqual;
 const AS_BOOL = v.AS_BOOL;
 const AS_NUMBER = v.AS_NUMBER;
 const BOOL_VAL = v.BOOL_VAL;
@@ -97,6 +98,29 @@ fn run() !InterpretResult {
             .op_nil => push(NIL_VAL),
             .op_true => push(BOOL_VAL(true)),
             .op_false => push(BOOL_VAL(false)),
+            .op_equal => {
+                const b = pop();
+                const a = pop();
+                push(BOOL_VAL(valuesEqual(a, b)));
+            },
+            .op_greater => {
+                if (!IS_NUMBER(peek(0)) or !IS_NUMBER(peek(1))) {
+                    runtimeError("Operands must be numbers.", .{});
+                    return .runtime_error;
+                }
+                const b = AS_NUMBER(pop());
+                const a = AS_NUMBER(pop());
+                push(BOOL_VAL(a > b));
+            },
+            .op_less => {
+                if (!IS_NUMBER(peek(0)) or !IS_NUMBER(peek(1))) {
+                    runtimeError("Operands must be numbers.", .{});
+                    return .runtime_error;
+                }
+                const b = AS_NUMBER(pop());
+                const a = AS_NUMBER(pop());
+                push(BOOL_VAL(a < b));
+            },
             .op_add => {
                 if (!IS_NUMBER(peek(0)) or !IS_NUMBER(peek(1))) {
                     runtimeError("Operands must be numbers.", .{});
