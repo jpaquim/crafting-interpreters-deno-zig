@@ -151,6 +151,15 @@ fn binary(allocator: Allocator) void {
     }
 }
 
+fn literal(allocator: Allocator) void {
+    switch (parser.previous.t_type) {
+        .FALSE => emitByte(allocator, @enumToInt(OpCode.op_false)),
+        .NIL => emitByte(allocator, @enumToInt(OpCode.op_nil)),
+        .TRUE => emitByte(allocator, @enumToInt(OpCode.op_true)),
+        else => unreachable,
+    }
+}
+
 fn grouping(allocator: Allocator) void {
     expression(allocator);
     consume(.RIGHT_PAREN, "Expect ')' after expression.");
@@ -202,17 +211,17 @@ const rules = [_]ParseRule{
     .{ .precedence = .NONE }, // AND
     .{ .precedence = .NONE }, // CLASS
     .{ .precedence = .NONE }, // ELSE
-    .{ .precedence = .NONE }, // FALSE
+    .{ .prefix = literal, .precedence = .NONE }, // FALSE
     .{ .precedence = .NONE }, // FOR
     .{ .precedence = .NONE }, // FUN
     .{ .precedence = .NONE }, // IF
-    .{ .precedence = .NONE }, // NIL
+    .{ .prefix = literal, .precedence = .NONE }, // NIL
     .{ .precedence = .NONE }, // OR
     .{ .precedence = .NONE }, // PRINT
     .{ .precedence = .NONE }, // RETURN
     .{ .precedence = .NONE }, // SUPER
     .{ .precedence = .NONE }, // THIS
-    .{ .precedence = .NONE }, // TRUE
+    .{ .prefix = literal, .precedence = .NONE }, // TRUE
     .{ .precedence = .NONE }, // VAR
     .{ .precedence = .NONE }, // WHILE
     .{ .precedence = .NONE }, // ERROR

@@ -15,8 +15,10 @@ const v = @import("./value.zig");
 const Value = v.Value;
 const printValue = v.printValue;
 const AS_NUMBER = v.AS_NUMBER;
+const BOOL_VAL = v.BOOL_VAL;
 const IS_NUMBER = v.IS_NUMBER;
 const NUMBER_VAL = v.NUMBER_VAL;
+const NIL_VAL = v.NIL_VAL;
 
 const STACK_MAX = 256;
 
@@ -89,6 +91,9 @@ fn run() !InterpretResult {
                 const constant = READ_CONSTANT();
                 push(constant);
             },
+            .op_nil => push(NIL_VAL),
+            .op_true => push(BOOL_VAL(true)),
+            .op_false => push(BOOL_VAL(false)),
             .op_add => {
                 if (!IS_NUMBER(peek(0)) or !IS_NUMBER(peek(1))) {
                     runtimeError("Operands must be numbers.", .{});

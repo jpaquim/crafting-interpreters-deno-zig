@@ -80,5 +80,11 @@ pub fn freeValueArray(allocator: Allocator, array: *ValueArray) void {
 
 pub fn printValue(value: Value) !void {
     const stdout = std.io.getStdOut().writer();
-    try stdout.print("{d}", .{AS_NUMBER(value)});
+    switch (value.v_type) {
+        .bool => {
+            try stdout.writeAll(if (AS_BOOL(value)) "true" else "false");
+        },
+        .nil => try stdout.writeAll("nil"),
+        .number => try stdout.print("{d}", .{AS_NUMBER(value)}),
+    }
 }

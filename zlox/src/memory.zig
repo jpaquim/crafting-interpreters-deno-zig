@@ -15,12 +15,13 @@ pub fn FREE_ARRAY(allocator: Allocator, comptime T: type, slice: ?[]T, old_count
 }
 
 fn reallocate(allocator: Allocator, comptime T: type, slice: ?[]T, old_size: usize, new_size: usize) ?[]T {
+    if (new_size == 0) {
+        if (slice != null) allocator.free(slice.?);
+        return null;
+    }
+
     if (old_size == 0) {
         return allocator.alloc(T, new_size) catch std.process.exit(1);
-    }
-    if (new_size == 0) {
-        allocator.free(slice.?);
-        return null;
     }
 
     const result = allocator.realloc(slice.?, new_size) catch std.process.exit(1);
