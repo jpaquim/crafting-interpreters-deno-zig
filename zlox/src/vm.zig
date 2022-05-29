@@ -14,14 +14,17 @@ const disassembleInstruction = @import("./debug.zig").disassembleInstruction;
 const v = @import("./value.zig");
 const Value = v.Value;
 const printValue = v.printValue;
+const AS_NUMBER = v.AS_NUMBER;
+const IS_NUMBER = v.IS_NUMBER;
+const NUMBER_VAL = v.NUMBER_VAL;
 
 const STACK_MAX = 256;
 
 pub const VM = struct {
     chunk: *Chunk,
-    ip: *u8,
+    ip: [*]u8,
     stack: [STACK_MAX]Value,
-    stack_top: *Value,
+    stack_top: [*]Value,
 };
 
 const InterpretResult = enum {
@@ -33,7 +36,19 @@ const InterpretResult = enum {
 var vm: VM = undefined;
 
 fn resetStack() void {
-    vm.stack_top = &vm.stack[0];
+    vm.stack_top = &vm.stack;
+}
+
+const stderr = std.io.getStdErr().writer();
+
+fn runtimeError(comptime format: []const u8, args: anytype) void {
+    stderr.print(format, args) catch unreachable;
+    stderr.writeByte('\n') catch unreachable;
+
+    const instruction = @ptrToInt(vm.ip) - @ptrToInt(vm.chunk.code.?.ptr) - 1;
+    const line = vm.chunk.lines.?[instruction];
+    stderr.print("[line {d}] in script\n", .{line}) catch unreachable;
+    resetStack();
 }
 
 pub fn initVM() void {
@@ -43,8 +58,8 @@ pub fn initVM() void {
 pub fn freeVM() void {}
 
 fn READ_BYTE() u8 {
-    const instruction = vm.ip.*;
-    vm.ip = @intToPtr(*u8, @ptrToInt(vm.ip) + 1);
+    const instruction = vm.ip[0];
+    vm.ip += 1;
     return instruction;
 }
 
@@ -58,10 +73,10 @@ fn run() !InterpretResult {
     while (true) {
         if (DEBUG_TRACE_EXECUTION) {
             try stdout.writeAll("          ");
-            var slot = &vm.stack[0];
-            while (@ptrToInt(slot) < @ptrToInt(vm.stack_top)) : (slot = @intToPtr(*Value, @ptrToInt(slot) + 8)) {
+            var slot: [*]Value = &vm.stack;
+            while (@ptrToInt(slot) < @ptrToInt(vm.stack_top)) : (slot += 1) {
                 try stdout.writeAll("[ ");
-                try printValue(slot.*);
+                try printValue(slot[0]);
                 try stdout.writeAll(" ]");
             }
             try stdout.writeByte('\n');
@@ -75,26 +90,48 @@ fn run() !InterpretResult {
                 push(constant);
             },
             .op_add => {
-                const b = pop();
-                const a = pop();
-                push(a + b);
+                if (!IS_NUMBER(peek(0)) or !IS_NUMBER(peek(1))) {
+                    runtimeError("Operands must be numbers.", .{});
+                    return .runtime_error;
+                }
+                const b = AS_NUMBER(pop());
+                const a = AS_NUMBER(pop());
+                push(NUMBER_VAL(a + b));
             },
             .op_subtract => {
-                const b = pop();
-                const a = pop();
-                push(a - b);
+                if (!IS_NUMBER(peek(0)) or !IS_NUMBER(peek(1))) {
+                    runtimeError("Operands must be numbers.", .{});
+                    return .runtime_error;
+                }
+                const b = AS_NUMBER(pop());
+                const a = AS_NUMBER(pop());
+                push(NUMBER_VAL(a - b));
             },
             .op_multiply => {
-                const b = pop();
-                const a = pop();
-                push(a * b);
+                if (!IS_NUMBER(peek(0)) or !IS_NUMBER(peek(1))) {
+                    runtimeError("Operands must be numbers.", .{});
+                    return .runtime_error;
+                }
+                const b = AS_NUMBER(pop());
+                const a = AS_NUMBER(pop());
+                push(NUMBER_VAL(a * b));
             },
             .op_divide => {
-                const b = pop();
-                const a = pop();
-                push(a / b);
+                if (!IS_NUMBER(peek(0)) or !IS_NUMBER(peek(1))) {
+                    runtimeError("Operands must be numbers.", .{});
+                    return .runtime_error;
+                }
+                const b = AS_NUMBER(pop());
+                const a = AS_NUMBER(pop());
+                push(NUMBER_VAL(a / b));
             },
-            .op_negate => push(-pop()),
+            .op_negate => {
+                if (!IS_NUMBER(peek(0))) {
+                    runtimeError("Operand must be a number.", .{});
+                    return .runtime_error;
+                }
+                push(NUMBER_VAL(-AS_NUMBER(pop())));
+            },
             .op_return => {
                 try printValue(pop());
                 try stdout.writeByte('\n');
@@ -113,7 +150,7 @@ pub fn interpret(allocator: Allocator, source: []const u8) !InterpretResult {
     if (!try compile(allocator, source, &chunk)) return .compile_error;
 
     vm.chunk = &chunk;
-    vm.ip = &vm.chunk.code.?[0];
+    vm.ip = vm.chunk.code.?.ptr;
 
     const result = try run();
 
@@ -121,11 +158,16 @@ pub fn interpret(allocator: Allocator, source: []const u8) !InterpretResult {
 }
 
 fn push(value: Value) void {
-    vm.stack_top.* = value;
-    vm.stack_top = @intToPtr(*Value, @ptrToInt(vm.stack_top) + 8);
+    vm.stack_top[0] = value;
+    vm.stack_top += 1;
 }
 
 fn pop() Value {
-    vm.stack_top = @intToPtr(*Value, @ptrToInt(vm.stack_top) - 8);
-    return vm.stack_top.*;
+    vm.stack_top -= 1;
+    return vm.stack_top[0];
+}
+
+fn peek(distance: usize) Value {
+    const ptr = vm.stack_top - 1 - distance;
+    return ptr[0];
 }

@@ -6,7 +6,49 @@ const FREE_ARRAY = memory.FREE_ARRAY;
 const GROW_ARRAY = memory.GROW_ARRAY;
 const GROW_CAPACITY = memory.GROW_CAPACITY;
 
-pub const Value = f64;
+const ValueType = enum {
+    bool,
+    nil,
+    number,
+};
+
+pub const Value = struct {
+    v_type: ValueType,
+    as: union {
+        boolean: bool,
+        number: f64,
+    },
+};
+
+pub fn IS_BOOL(value: Value) bool {
+    return value.v_type == .bool;
+}
+
+pub fn IS_NIL(value: Value) bool {
+    return value.v_type == .nil;
+}
+
+pub fn IS_NUMBER(value: Value) bool {
+    return value.v_type == .number;
+}
+
+pub fn AS_BOOL(value: Value) bool {
+    return value.as.boolean;
+}
+
+pub fn AS_NUMBER(value: Value) f64 {
+    return value.as.number;
+}
+
+pub fn BOOL_VAL(value: bool) Value {
+    return .{ .v_type = .bool, .as = .{ .boolean = value } };
+}
+
+pub const NIL_VAL = Value{ .v_type = .nil, .as = undefined };
+
+pub fn NUMBER_VAL(value: f64) Value {
+    return .{ .v_type = .number, .as = .{ .number = value } };
+}
 
 pub const ValueArray = struct {
     capacity: usize,
@@ -38,5 +80,5 @@ pub fn freeValueArray(allocator: Allocator, array: *ValueArray) void {
 
 pub fn printValue(value: Value) !void {
     const stdout = std.io.getStdOut().writer();
-    try stdout.print("{d}", .{value});
+    try stdout.print("{d}", .{AS_NUMBER(value)});
 }

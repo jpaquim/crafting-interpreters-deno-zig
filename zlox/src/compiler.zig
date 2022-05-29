@@ -19,6 +19,7 @@ const scanToken = scanner.scanToken;
 
 const v = @import("./value.zig");
 const Value = v.Value;
+const NUMBER_VAL = v.NUMBER_VAL;
 
 const stdout = std.io.getStdOut().writer();
 const stderr = std.io.getStdErr().writer();
@@ -161,7 +162,7 @@ fn expression(allocator: Allocator) void {
 
 fn number(allocator: Allocator) void {
     const value = std.fmt.parseFloat(f64, parser.previous.start[0..parser.previous.length]) catch unreachable;
-    emitConstant(allocator, value);
+    emitConstant(allocator, NUMBER_VAL(value));
 }
 
 fn unary(allocator: Allocator) void {
