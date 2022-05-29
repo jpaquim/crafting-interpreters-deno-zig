@@ -57,7 +57,7 @@ pub fn writeChunk(allocator: Allocator, chunk: *Chunk, byte: u8, line: usize) vo
     chunk.count += 1;
 }
 
-pub fn addConstant(allocator: Allocator, chunk: *Chunk, value: Value) u8 {
+pub fn addConstant(allocator: Allocator, chunk: *Chunk, value: Value) usize {
     writeValueArray(allocator, &chunk.constants, value);
-    return @intCast(u8, chunk.constants.count - 1);
+    return chunk.constants.count - 1;
 }

@@ -9,8 +9,6 @@ const freeChunk = chk.freeChunk;
 const initChunk = chk.initChunk;
 const writeChunk = chk.writeChunk;
 
-const debug = @import("./debug.zig");
-const disassembleChunk = debug.disassembleChunk;
 const vm = @import("./vm.zig");
 const freeVM = vm.freeVM;
 const initVM = vm.initVM;
@@ -20,7 +18,7 @@ const stdin = std.io.getStdIn().reader();
 const stdout = std.io.getStdOut().writer();
 const stderr = std.io.getStdErr().writer();
 
-fn repl() !void {
+fn repl(allocator: Allocator) !void {
     var buffer: [1024]u8 = undefined;
     while (true) {
         try stdout.writeAll("> ");
@@ -29,7 +27,7 @@ fn repl() !void {
             break;
         };
 
-        _ = try interpret(line);
+        _ = try interpret(allocator, line);
     }
 }
 
@@ -58,7 +56,7 @@ fn readFile(allocator: Allocator, path: []const u8) ![]const u8 {
 fn runFile(allocator: Allocator, path: []const u8) !void {
     const source = try readFile(allocator, path);
     defer allocator.free(source);
-    const result = try interpret(source);
+    const result = try interpret(allocator, source);
 
     if (result == .compile_error) std.process.exit(65);
     if (result == .runtime_error) std.process.exit(70);
@@ -80,7 +78,7 @@ pub fn main() anyerror!void {
     if (iter.next()) |filename| {
         try runFile(allocator, filename);
     } else {
-        try repl();
+        try repl(allocator);
     }
 
     if (iter.skip()) {

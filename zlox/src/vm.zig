@@ -1,10 +1,16 @@
 const std = @import("std");
+const Allocator = std.mem.Allocator;
+
 const chk = @import("./chunk.zig");
 const Chunk = chk.Chunk;
 const OpCode = chk.OpCode;
+const freeChunk = chk.freeChunk;
+const initChunk = chk.initChunk;
+
 const compile = @import("./compiler.zig").compile;
 const DEBUG_TRACE_EXECUTION = @import("./common.zig").DEBUG_TRACE_EXECUTION;
 const disassembleInstruction = @import("./debug.zig").disassembleInstruction;
+
 const v = @import("./value.zig");
 const Value = v.Value;
 const printValue = v.printValue;
@@ -98,9 +104,20 @@ fn run() !InterpretResult {
     }
 }
 
-pub fn interpret(source: []const u8) !InterpretResult {
-    try compile(source);
-    return .ok;
+pub fn interpret(allocator: Allocator, source: []const u8) !InterpretResult {
+    var chunk: Chunk = undefined;
+    initChunk(&chunk);
+
+    defer freeChunk(allocator, &chunk);
+
+    if (!try compile(allocator, source, &chunk)) return .compile_error;
+
+    vm.chunk = &chunk;
+    vm.ip = &vm.chunk.code.?[0];
+
+    const result = try run();
+
+    return result;
 }
 
 fn push(value: Value) void {
