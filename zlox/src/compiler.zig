@@ -180,6 +180,7 @@ fn unary(allocator: Allocator) void {
     parsePrecedence(allocator, .UNARY);
 
     switch (operator_type) {
+        .BANG => emitByte(allocator, @enumToInt(OpCode.op_not)),
         .MINUS => emitByte(allocator, @enumToInt(OpCode.op_negate)),
         else => unreachable,
     }
@@ -197,7 +198,7 @@ const rules = [_]ParseRule{
     .{ .precedence = .NONE }, // SEMICOLON
     .{ .infix = binary, .precedence = .FACTOR }, // SLASH
     .{ .infix = binary, .precedence = .FACTOR }, // STAR
-    .{ .precedence = .NONE }, // BANG
+    .{ .prefix = unary, .precedence = .NONE }, // BANG
     .{ .precedence = .NONE }, // BANG_EQUAL
     .{ .precedence = .NONE }, // EQUAL
     .{ .precedence = .NONE }, // EQUAL_EQUAL

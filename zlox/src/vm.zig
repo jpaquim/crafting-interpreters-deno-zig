@@ -14,11 +14,14 @@ const disassembleInstruction = @import("./debug.zig").disassembleInstruction;
 const v = @import("./value.zig");
 const Value = v.Value;
 const printValue = v.printValue;
+const AS_BOOL = v.AS_BOOL;
 const AS_NUMBER = v.AS_NUMBER;
 const BOOL_VAL = v.BOOL_VAL;
+const IS_BOOL = v.IS_BOOL;
+const IS_NIL = v.IS_NIL;
 const IS_NUMBER = v.IS_NUMBER;
-const NUMBER_VAL = v.NUMBER_VAL;
 const NIL_VAL = v.NIL_VAL;
+const NUMBER_VAL = v.NUMBER_VAL;
 
 const STACK_MAX = 256;
 
@@ -130,6 +133,7 @@ fn run() !InterpretResult {
                 const a = AS_NUMBER(pop());
                 push(NUMBER_VAL(a / b));
             },
+            .op_not => push(BOOL_VAL(isFalsey(pop()))),
             .op_negate => {
                 if (!IS_NUMBER(peek(0))) {
                     runtimeError("Operand must be a number.", .{});
@@ -175,4 +179,8 @@ fn pop() Value {
 fn peek(distance: usize) Value {
     const ptr = vm.stack_top - 1 - distance;
     return ptr[0];
+}
+
+fn isFalsey(value: Value) bool {
+    return IS_NIL(value) or (IS_BOOL(value) and !AS_BOOL(value));
 }
