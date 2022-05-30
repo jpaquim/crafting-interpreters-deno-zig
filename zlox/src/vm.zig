@@ -17,6 +17,7 @@ const freeObjects = memory.freeObjects;
 
 const o = @import("./object.zig");
 const Obj = o.Obj;
+const ObjString = o.ObjString;
 const takeString = o.takeString;
 const AS_STRING = o.AS_STRING;
 const IS_STRING = o.IS_STRING;
@@ -25,6 +26,7 @@ const table = @import("./table.zig");
 const Table = table.Table;
 const initTable = table.initTable;
 const freeTable = table.freeTable;
+const tableSet = table.tableSet;
 
 const v = @import("./value.zig");
 const Value = v.Value;
@@ -47,6 +49,7 @@ pub const VM = struct {
     ip: [*]u8,
     stack: [STACK_MAX]Value,
     stack_top: [*]Value,
+    globals: Table,
     strings: Table,
     objects: ?*Obj,
 };
@@ -78,10 +81,12 @@ fn runtimeError(comptime format: []const u8, args: anytype) void {
 pub fn initVM() void {
     resetStack();
     vm.objects = null;
+    initTable(&vm.globals);
     initTable(&vm.strings);
 }
 
 pub fn freeVM(allocator: Allocator) void {
+    freeTable(allocator, &vm.globals);
     freeTable(allocator, &vm.strings);
     freeObjects(allocator);
 }
@@ -94,6 +99,10 @@ fn READ_BYTE() u8 {
 
 fn READ_CONSTANT() Value {
     return vm.chunk.constants.values.?[READ_BYTE()];
+}
+
+fn READ_STRING() *ObjString {
+    return AS_STRING(READ_CONSTANT());
 }
 
 fn run(allocator: Allocator) !InterpretResult {
@@ -122,6 +131,11 @@ fn run(allocator: Allocator) !InterpretResult {
             .op_true => push(BOOL_VAL(true)),
             .op_false => push(BOOL_VAL(false)),
             .op_pop => _ = pop(),
+            .op_define_global => {
+                const name = READ_STRING();
+                _ = tableSet(allocator, &vm.globals, name, peek(0));
+                _ = pop();
+            },
             .op_equal => {
                 const b = pop();
                 const a = pop();

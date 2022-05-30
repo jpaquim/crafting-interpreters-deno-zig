@@ -189,6 +189,19 @@ fn expression(allocator: Allocator) void {
     parsePrecedence(allocator, .ASSIGNMENT);
 }
 
+fn varDeclaration(allocator: Allocator) void {
+    const global = parseVariable(allocator, "Expect variable name.");
+
+    if (match(.EQUAL)) {
+        expression(allocator);
+    } else {
+        emitByte(allocator, @enumToInt(OpCode.op_nil));
+    }
+    consume(.SEMICOLON, "Expect ';' after variable declaration.");
+
+    defineVariable(allocator, global);
+}
+
 fn expressionStatement(allocator: Allocator) void {
     expression(allocator);
     consume(.SEMICOLON, "Expect ';' after expression.");
@@ -201,8 +214,28 @@ fn printStatement(allocator: Allocator) void {
     emitByte(allocator, @enumToInt(OpCode.op_print));
 }
 
+fn synchronize() void {
+    parser.panic_mode = false;
+
+    while (parser.current.t_type != .EOF) {
+        if (parser.previous.t_type == .SEMICOLON) return;
+        switch (parser.current.t_type) {
+            .CLASS, .FUN, .VAR, .FOR, .IF, .WHILE, .PRINT, .RETURN => return,
+            else => {},
+        }
+
+        advance();
+    }
+}
+
 fn declaration(allocator: Allocator) void {
-    statement(allocator);
+    if (match(.VAR)) {
+        varDeclaration(allocator);
+    } else {
+        statement(allocator);
+    }
+
+    if (parser.panic_mode) synchronize();
 }
 
 fn statement(allocator: Allocator) void {
@@ -292,6 +325,19 @@ fn parsePrecedence(allocator: Allocator, precedence: Precedence) void {
         const infix_rule = getRule(parser.previous.t_type).infix;
         infix_rule.?(allocator);
     }
+}
+
+fn identifierConstant(allocator: Allocator, name: *Token) u8 {
+    return makeConstant(allocator, OBJ_VAL(&copyString(allocator, name.start, name.length).obj));
+}
+
+fn parseVariable(allocator: Allocator, error_message: []const u8) u8 {
+    consume(.IDENTIFIER, error_message);
+    return identifierConstant(allocator, &parser.previous);
+}
+
+fn defineVariable(allocator: Allocator, global: u8) void {
+    emitBytes(allocator, @enumToInt(OpCode.op_define_global), global);
 }
 
 fn getRule(t_type: TokenType) *const ParseRule {
