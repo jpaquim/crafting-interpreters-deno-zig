@@ -6,10 +6,16 @@ const FREE_ARRAY = memory.FREE_ARRAY;
 const GROW_ARRAY = memory.GROW_ARRAY;
 const GROW_CAPACITY = memory.GROW_CAPACITY;
 
+const o = @import("./object.zig");
+const Obj = o.Obj;
+const AS_STRING = o.AS_STRING;
+const printObject = o.printObject;
+
 const ValueType = enum {
     bool,
     nil,
     number,
+    obj,
 };
 
 pub const Value = struct {
@@ -17,6 +23,7 @@ pub const Value = struct {
     as: union {
         boolean: bool,
         number: f64,
+        obj: *Obj,
     },
 };
 
@@ -32,12 +39,20 @@ pub fn IS_NUMBER(value: Value) bool {
     return value.v_type == .number;
 }
 
+pub fn IS_OBJ(value: Value) bool {
+    return value.v_type == .objj;
+}
+
 pub fn AS_BOOL(value: Value) bool {
     return value.as.boolean;
 }
 
 pub fn AS_NUMBER(value: Value) f64 {
     return value.as.number;
+}
+
+pub fn AS_OBJ(value: Value) *Obj {
+    return value.as.obj;
 }
 
 pub fn BOOL_VAL(value: bool) Value {
@@ -48,6 +63,10 @@ pub const NIL_VAL = Value{ .v_type = .nil, .as = undefined };
 
 pub fn NUMBER_VAL(value: f64) Value {
     return .{ .v_type = .number, .as = .{ .number = value } };
+}
+
+pub fn OBJ_VAL(object: *Obj) Value {
+    return .{ .v_type = .obj, .as = .{ .obj = object } };
 }
 
 pub const ValueArray = struct {
@@ -86,6 +105,7 @@ pub fn printValue(value: Value) !void {
         },
         .nil => try stdout.writeAll("nil"),
         .number => try stdout.print("{d}", .{AS_NUMBER(value)}),
+        .obj => try printObject(value),
     }
 }
 
@@ -95,5 +115,15 @@ pub fn valuesEqual(a: Value, b: Value) bool {
         .bool => return AS_BOOL(a) == AS_BOOL(b),
         .nil => return true,
         .number => return AS_NUMBER(a) == AS_NUMBER(b),
+        .obj => {
+            const a_string = AS_STRING(a);
+            const b_string = AS_STRING(b);
+            return a_string.length == b_string.length and
+                std.mem.eql(
+                u8,
+                a_string.chars[0..a_string.length],
+                b_string.chars[0..b_string.length],
+            );
+        },
     }
 }

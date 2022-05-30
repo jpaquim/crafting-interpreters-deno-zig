@@ -11,6 +11,9 @@ const DEBUG_PRINT_CODE = @import("./common.zig").DEBUG_PRINT_CODE;
 const debug = @import("./debug.zig");
 const disassembleChunk = debug.disassembleChunk;
 
+const object = @import("./object.zig");
+const copyString = object.copyString;
+
 const scanner = @import("./scanner.zig");
 const Token = scanner.Token;
 const TokenType = scanner.TokenType;
@@ -20,6 +23,7 @@ const scanToken = scanner.scanToken;
 const v = @import("./value.zig");
 const Value = v.Value;
 const NUMBER_VAL = v.NUMBER_VAL;
+const OBJ_VAL = v.OBJ_VAL;
 
 const stdout = std.io.getStdOut().writer();
 const stderr = std.io.getStdErr().writer();
@@ -180,6 +184,10 @@ fn number(allocator: Allocator) void {
     emitConstant(allocator, NUMBER_VAL(value));
 }
 
+fn string(allocator: Allocator) void {
+    emitConstant(allocator, OBJ_VAL(&copyString(allocator, parser.previous.start + 1, parser.previous.length - 2).obj));
+}
+
 fn unary(allocator: Allocator) void {
     const operator_type = parser.previous.t_type;
 
@@ -213,7 +221,7 @@ const rules = [_]ParseRule{
     .{ .infix = binary, .precedence = .COMPARISON }, // LESS
     .{ .infix = binary, .precedence = .COMPARISON }, // LESS_EQUAL
     .{ .precedence = .NONE }, // IDENTIFIER
-    .{ .precedence = .NONE }, // STRING
+    .{ .prefix = string, .precedence = .NONE }, // STRING
     .{ .prefix = number, .precedence = .NONE }, // NUMBER
     .{ .precedence = .NONE }, // AND
     .{ .precedence = .NONE }, // CLASS
