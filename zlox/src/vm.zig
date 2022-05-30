@@ -103,6 +103,13 @@ fn READ_CONSTANT() Value {
     return vm.chunk.constants.values.?[READ_BYTE()];
 }
 
+fn READ_SHORT() u16 {
+    const first = vm.ip[0];
+    const second = vm.ip[1];
+    vm.ip += 2;
+    return (@as(u16, first) << 8) | second;
+}
+
 fn READ_STRING() *ObjString {
     return AS_STRING(READ_CONSTANT());
 }
@@ -236,6 +243,14 @@ fn run(allocator: Allocator) !InterpretResult {
             .op_print => {
                 try printValue(pop());
                 try stdout.writeByte('\n');
+            },
+            .op_jump => {
+                const offset = READ_SHORT();
+                vm.ip += offset;
+            },
+            .op_jump_if_false => {
+                const offset = READ_SHORT();
+                if (isFalsey(peek(0))) vm.ip += offset;
             },
             .op_return => {
                 return .ok;

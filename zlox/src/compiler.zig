@@ -140,6 +140,13 @@ fn emitBytes(allocator: Allocator, byte1: u8, byte2: u8) void {
     emitByte(allocator, byte2);
 }
 
+fn emitJump(allocator: Allocator, instruction: u8) usize {
+    emitByte(allocator, instruction);
+    emitByte(allocator, 0xff);
+    emitByte(allocator, 0xff);
+    return currentChunk().count - 2;
+}
+
 fn emitReturn(allocator: Allocator) void {
     emitByte(allocator, @enumToInt(OpCode.op_return));
 }
@@ -156,6 +163,17 @@ fn makeConstant(allocator: Allocator, value: Value) u8 {
 
 fn emitConstant(allocator: Allocator, value: Value) void {
     emitBytes(allocator, @enumToInt(OpCode.op_constant), makeConstant(allocator, value));
+}
+
+fn patchJump(offset: usize) void {
+    const jump = currentChunk().count - offset - 2;
+
+    if (jump > std.math.maxInt(u16)) {
+        err("Too much code to jump over.");
+    }
+
+    currentChunk().code.?[offset] = @intCast(u8, jump >> 8) & 0xff;
+    currentChunk().code.?[offset + 1] = @intCast(u8, jump) & 0xff;
 }
 
 fn initCompiler(compiler: *Compiler) void {
@@ -249,6 +267,24 @@ fn expressionStatement(allocator: Allocator) void {
     emitByte(allocator, @enumToInt(OpCode.op_pop));
 }
 
+fn ifStatement(allocator: Allocator) void {
+    consume(.LEFT_PAREN, "Expect '(' after 'if'.");
+    expression(allocator);
+    consume(.RIGHT_PAREN, "Expect ')' after condition.");
+
+    const then_jump = emitJump(allocator, @enumToInt(OpCode.op_jump_if_false));
+    emitByte(allocator, @enumToInt(OpCode.op_pop));
+    statement(allocator);
+
+    const else_jump = emitJump(allocator, @enumToInt(OpCode.op_jump));
+
+    patchJump(then_jump);
+    emitByte(allocator, @enumToInt(OpCode.op_pop));
+
+    if (match(.ELSE)) statement(allocator);
+    patchJump(else_jump);
+}
+
 fn printStatement(allocator: Allocator) void {
     expression(allocator);
     consume(.SEMICOLON, "Expect ';' after value.");
@@ -282,6 +318,8 @@ fn declaration(allocator: Allocator) void {
 fn statement(allocator: Allocator) void {
     if (match(.PRINT)) {
         printStatement(allocator);
+    } else if (match(.IF)) {
+        ifStatement(allocator);
     } else if (match(.LEFT_BRACE)) {
         beginScope();
         block(allocator);

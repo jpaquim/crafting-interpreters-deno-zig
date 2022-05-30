@@ -45,6 +45,8 @@ pub fn disassembleInstruction(chunk: *Chunk, offset: usize) !usize {
         .op_not => return simpleInstruction("OP_NOT", offset),
         .op_negate => return simpleInstruction("OP_NEGATE", offset),
         .op_print => return simpleInstruction("OP_PRINT", offset),
+        .op_jump => return jumpInstruction("OP_JUMP", 1, chunk, offset),
+        .op_jump_if_false => return jumpInstruction("OP_JUMP_IF_FALSE", 1, chunk, offset),
         .op_return => return simpleInstruction("OP_RETURN", offset),
     }
     stdout.print("Unknown opcode {d}\n", .{instruction});
@@ -68,4 +70,11 @@ fn byteInstruction(name: []const u8, chunk: *Chunk, offset: usize) !usize {
     const slot = chunk.code.?[offset + 1];
     try stdout.print("{s:<16} {d:4}\n", .{ name, slot });
     return offset + 2;
+}
+
+fn jumpInstruction(name: []const u8, comptime sign: comptime_int, chunk: *Chunk, offset: usize) !usize {
+    var jump: u16 = @as(u16, chunk.code.?[offset + 1]) << 8;
+    jump |= chunk.code.?[offset + 2];
+    try stdout.print("{s:<16} {d:4} -> {d}\n", .{ name, offset, offset + 3 + sign * jump });
+    return offset + 3;
 }
