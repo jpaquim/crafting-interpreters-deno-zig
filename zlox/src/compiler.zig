@@ -411,8 +411,14 @@ fn identifiersEqual(a: *const Token, b: *const Token) bool {
 }
 
 fn resolveLocal(compiler: *Compiler, name: *const Token) i16 {
-    for (compiler.locals) |*local, i| {
+    var i = compiler.local_count;
+    while (i > 0) {
+        i -= 1;
+        const local = &compiler.locals[i];
         if (identifiersEqual(name, &local.name)) {
+            if (local.depth == -1) {
+                err("Can't read local variable in its own initializer.");
+            }
             return @intCast(i16, i);
         }
     }
@@ -429,7 +435,7 @@ fn addLocal(name: Token) void {
     const local = &current.?.locals[current.?.local_count];
     current.?.local_count += 1;
     local.name = name;
-    local.depth = current.?.scope_depth;
+    local.depth = -1;
 }
 
 fn declareVariable() void {
@@ -461,8 +467,13 @@ fn parseVariable(allocator: Allocator, error_message: []const u8) u8 {
     return identifierConstant(allocator, &parser.previous);
 }
 
+fn markInitialized() void {
+    current.?.locals[current.?.local_count - 1].depth = current.?.scope_depth;
+}
+
 fn defineVariable(allocator: Allocator, global: u8) void {
     if (current.?.scope_depth > 0) {
+        markInitialized();
         return;
     }
 

@@ -66,6 +66,6 @@ fn simpleInstruction(name: []const u8, offset: usize) !usize {
 
 fn byteInstruction(name: []const u8, chunk: *Chunk, offset: usize) !usize {
     const slot = chunk.code.?[offset + 1];
-    try stdout.print("{s:<16} {d:4} '", .{ name, slot });
+    try stdout.print("{s:<16} {d:4}\n", .{ name, slot });
     return offset + 2;
 }
