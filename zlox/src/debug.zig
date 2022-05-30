@@ -38,6 +38,7 @@ pub fn disassembleInstruction(chunk: *Chunk, offset: usize) !usize {
         .op_divide => return simpleInstruction("OP_DIVIDE", offset),
         .op_not => return simpleInstruction("OP_NOT", offset),
         .op_negate => return simpleInstruction("OP_NEGATE", offset),
+        .op_print => return simpleInstruction("OP_PRINT", offset),
         .op_return => return simpleInstruction("OP_RETURN", offset),
     }
     stdout.print("Unknown opcode {d}\n", .{instruction});

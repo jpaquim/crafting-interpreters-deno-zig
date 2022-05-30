@@ -191,9 +191,11 @@ fn run(allocator: Allocator) !InterpretResult {
                 }
                 push(NUMBER_VAL(-AS_NUMBER(pop())));
             },
-            .op_return => {
+            .op_print => {
                 try printValue(pop());
                 try stdout.writeByte('\n');
+            },
+            .op_return => {
                 return .ok;
             },
         }
@@ -245,6 +247,5 @@ fn concatenate(allocator: Allocator) void {
     std.mem.copy(u8, chars[a.length..], b.chars[0..b.length]);
 
     const result = takeString(allocator, chars.ptr, length);
-    // push(OBJ_VAL(result));
     push(OBJ_VAL(&result.obj));
 }

@@ -107,6 +107,16 @@ fn consume(t_type: TokenType, message: []const u8) void {
     errorAtCurrent(message);
 }
 
+fn check(t_type: TokenType) bool {
+    return parser.current.t_type == t_type;
+}
+
+fn match(t_type: TokenType) bool {
+    if (!check(t_type)) return false;
+    advance();
+    return true;
+}
+
 fn emitByte(allocator: Allocator, byte: u8) void {
     writeChunk(allocator, currentChunk(), byte, parser.previous.line);
 }
@@ -177,6 +187,22 @@ fn grouping(allocator: Allocator) void {
 
 fn expression(allocator: Allocator) void {
     parsePrecedence(allocator, .ASSIGNMENT);
+}
+
+fn printStatement(allocator: Allocator) void {
+    expression(allocator);
+    consume(.SEMICOLON, "Expect ';' after value.");
+    emitByte(allocator, @enumToInt(OpCode.op_print));
+}
+
+fn declaration(allocator: Allocator) void {
+    statement(allocator);
+}
+
+fn statement(allocator: Allocator) void {
+    if (match(.PRINT)) {
+        printStatement(allocator);
+    }
 }
 
 fn number(allocator: Allocator) void {
@@ -272,8 +298,11 @@ pub fn compile(allocator: Allocator, source: []const u8, chunk: *Chunk) !bool {
     parser.panic_mode = false;
 
     advance();
-    expression(allocator);
-    consume(.EOF, "Expect end of expression.");
+
+    while (!match(.EOF)) {
+        declaration(allocator);
+    }
+
     try endCompiler(allocator);
     return !parser.had_error;
 }
