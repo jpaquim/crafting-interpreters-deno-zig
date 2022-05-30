@@ -133,6 +133,14 @@ fn run(allocator: Allocator) !InterpretResult {
             .op_true => push(BOOL_VAL(true)),
             .op_false => push(BOOL_VAL(false)),
             .op_pop => _ = pop(),
+            .op_get_local => {
+                const slot = READ_BYTE();
+                push(vm.stack[slot]);
+            },
+            .op_set_local => {
+                const slot = READ_BYTE();
+                vm.stack[slot] = peek(0);
+            },
             .op_get_global => {
                 const name = READ_STRING();
                 var value: Value = undefined;

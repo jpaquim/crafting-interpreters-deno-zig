@@ -7,7 +7,9 @@ const OpCode = chk.OpCode;
 const addConstant = chk.addConstant;
 const writeChunk = chk.writeChunk;
 
-const DEBUG_PRINT_CODE = @import("./common.zig").DEBUG_PRINT_CODE;
+const common = @import("./common.zig");
+const DEBUG_PRINT_CODE = common.DEBUG_PRINT_CODE;
+const U8_COUNT = common.U8_COUNT;
 const debug = @import("./debug.zig");
 const disassembleChunk = debug.disassembleChunk;
 
@@ -57,7 +59,19 @@ const ParseRule = struct {
     precedence: Precedence,
 };
 
+const Local = struct {
+    name: Token,
+    depth: i32,
+};
+
+const Compiler = struct {
+    locals: [U8_COUNT]Local,
+    local_count: usize,
+    scope_depth: i32,
+};
+
 var parser: Parser = undefined;
+var current: ?*Compiler = null;
 var compiling_chunk: *Chunk = undefined;
 
 fn currentChunk() *Chunk {
@@ -144,10 +158,29 @@ fn emitConstant(allocator: Allocator, value: Value) void {
     emitBytes(allocator, @enumToInt(OpCode.op_constant), makeConstant(allocator, value));
 }
 
+fn initCompiler(compiler: *Compiler) void {
+    compiler.local_count = 0;
+    compiler.scope_depth = 0;
+    current = compiler;
+}
+
 fn endCompiler(allocator: Allocator) !void {
     emitReturn(allocator);
     if (DEBUG_PRINT_CODE) {
         try disassembleChunk(currentChunk(), "code");
+    }
+}
+
+fn beginScope() void {
+    current.?.scope_depth += 1;
+}
+
+fn endScope(allocator: Allocator) void {
+    current.?.scope_depth -= 1;
+
+    while (current.?.local_count > 0 and current.?.locals[current.?.local_count - 1].depth > current.?.scope_depth) {
+        emitByte(allocator, @enumToInt(OpCode.op_pop));
+        current.?.local_count -= 1;
     }
 }
 
@@ -187,6 +220,14 @@ fn grouping(allocator: Allocator, _: bool) void {
 
 fn expression(allocator: Allocator) void {
     parsePrecedence(allocator, .ASSIGNMENT);
+}
+
+fn block(allocator: Allocator) void {
+    while (!check(.RIGHT_BRACE) and !check(.EOF)) {
+        declaration(allocator);
+    }
+
+    consume(.RIGHT_BRACE, "Expect '}' after block.");
 }
 
 fn varDeclaration(allocator: Allocator) void {
@@ -241,6 +282,10 @@ fn declaration(allocator: Allocator) void {
 fn statement(allocator: Allocator) void {
     if (match(.PRINT)) {
         printStatement(allocator);
+    } else if (match(.LEFT_BRACE)) {
+        beginScope();
+        block(allocator);
+        endScope(allocator);
     } else {
         expressionStatement(allocator);
     }
@@ -256,13 +301,22 @@ fn string(allocator: Allocator, _: bool) void {
 }
 
 fn namedVariable(allocator: Allocator, name: Token, can_assign: bool) void {
-    const arg = identifierConstant(allocator, &name);
+    const arg = resolveLocal(current.?, &name);
+    var get_op: OpCode = undefined;
+    var set_op: OpCode = undefined;
+    if (arg != -1) {
+        get_op = .op_get_local;
+        set_op = .op_set_local;
+    } else {
+        get_op = .op_get_global;
+        set_op = .op_set_global;
+    }
 
     if (can_assign and match(.EQUAL)) {
         expression(allocator);
-        emitBytes(allocator, @enumToInt(OpCode.op_set_global), arg);
+        emitBytes(allocator, @enumToInt(set_op), @intCast(u8, arg));
     } else {
-        emitBytes(allocator, @enumToInt(OpCode.op_get_global), arg);
+        emitBytes(allocator, @enumToInt(get_op), @intCast(u8, arg));
     }
 }
 
@@ -351,12 +405,67 @@ fn identifierConstant(allocator: Allocator, name: *const Token) u8 {
     return makeConstant(allocator, OBJ_VAL(&copyString(allocator, name.start, name.length).obj));
 }
 
+fn identifiersEqual(a: *const Token, b: *const Token) bool {
+    if (a.length != b.length) return false;
+    return std.mem.eql(u8, a.start[0..a.length], b.start[0..b.length]);
+}
+
+fn resolveLocal(compiler: *Compiler, name: *const Token) i16 {
+    for (compiler.locals) |*local, i| {
+        if (identifiersEqual(name, &local.name)) {
+            return @intCast(i16, i);
+        }
+    }
+
+    return -1;
+}
+
+fn addLocal(name: Token) void {
+    if (current.?.local_count == U8_COUNT) {
+        err("Too many local variables in function.");
+        return;
+    }
+
+    const local = &current.?.locals[current.?.local_count];
+    current.?.local_count += 1;
+    local.name = name;
+    local.depth = current.?.scope_depth;
+}
+
+fn declareVariable() void {
+    if (current.?.scope_depth == 0) return;
+
+    const name = &parser.previous;
+    var i: usize = current.?.local_count;
+    while (i > 0) {
+        i -= 1;
+        const local = &current.?.locals[i];
+        if (local.depth != -1 and local.depth < current.?.scope_depth) {
+            break;
+        }
+
+        if (identifiersEqual(name, &local.name)) {
+            err("Already a variable with this name in this scope.");
+        }
+    }
+
+    addLocal(name.*);
+}
+
 fn parseVariable(allocator: Allocator, error_message: []const u8) u8 {
     consume(.IDENTIFIER, error_message);
+
+    declareVariable();
+    if (current.?.scope_depth > 0) return 0;
+
     return identifierConstant(allocator, &parser.previous);
 }
 
 fn defineVariable(allocator: Allocator, global: u8) void {
+    if (current.?.scope_depth > 0) {
+        return;
+    }
+
     emitBytes(allocator, @enumToInt(OpCode.op_define_global), global);
 }
 
@@ -366,6 +475,8 @@ fn getRule(t_type: TokenType) *const ParseRule {
 
 pub fn compile(allocator: Allocator, source: []const u8, chunk: *Chunk) !bool {
     initScanner(source);
+    var compiler: Compiler = undefined;
+    initCompiler(&compiler);
     compiling_chunk = chunk;
 
     parser.had_error = false;

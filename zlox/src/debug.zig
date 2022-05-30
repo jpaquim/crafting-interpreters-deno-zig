@@ -30,6 +30,8 @@ pub fn disassembleInstruction(chunk: *Chunk, offset: usize) !usize {
         .op_true => return simpleInstruction("OP_TRUE", offset),
         .op_false => return simpleInstruction("OP_FALSE", offset),
         .op_pop => return simpleInstruction("OP_POP", offset),
+        .op_get_local => return byteInstruction("OP_GET_LOCAL", chunk, offset),
+        .op_set_local => return byteInstruction("OP_SET_LOCAL", chunk, offset),
         .op_get_global => return constantInstruction("OP_GET_GLOBAL", chunk, offset),
         .op_define_global => return constantInstruction("OP_DEFINE_GLOBAL", chunk, offset),
         .op_set_global => return constantInstruction("OP_SET_GLOBAL", chunk, offset),
@@ -60,4 +62,10 @@ fn constantInstruction(name: []const u8, chunk: *Chunk, offset: usize) !usize {
 fn simpleInstruction(name: []const u8, offset: usize) !usize {
     try stdout.print("{s}\n", .{name});
     return offset + 1;
+}
+
+fn byteInstruction(name: []const u8, chunk: *Chunk, offset: usize) !usize {
+    const slot = chunk.code.?[offset + 1];
+    try stdout.print("{s:<16} {d:4} '", .{ name, slot });
+    return offset + 2;
 }
