@@ -121,6 +121,7 @@ fn run(allocator: Allocator) !InterpretResult {
             .op_nil => push(NIL_VAL),
             .op_true => push(BOOL_VAL(true)),
             .op_false => push(BOOL_VAL(false)),
+            .op_pop => _ = pop(),
             .op_equal => {
                 const b = pop();
                 const a = pop();

@@ -189,6 +189,12 @@ fn expression(allocator: Allocator) void {
     parsePrecedence(allocator, .ASSIGNMENT);
 }
 
+fn expressionStatement(allocator: Allocator) void {
+    expression(allocator);
+    consume(.SEMICOLON, "Expect ';' after expression.");
+    emitByte(allocator, @enumToInt(OpCode.op_pop));
+}
+
 fn printStatement(allocator: Allocator) void {
     expression(allocator);
     consume(.SEMICOLON, "Expect ';' after value.");
@@ -202,6 +208,8 @@ fn declaration(allocator: Allocator) void {
 fn statement(allocator: Allocator) void {
     if (match(.PRINT)) {
         printStatement(allocator);
+    } else {
+        expressionStatement(allocator);
     }
 }
 
