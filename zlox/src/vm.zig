@@ -146,6 +146,7 @@ fn run(allocator: Allocator) !InterpretResult {
                 var value: Value = undefined;
                 if (!tableGet(&vm.globals, name, &value)) {
                     runtimeError("Undefined variable '{s}'.", .{name.chars[0..name.length]});
+                    return .runtime_error;
                 }
                 push(value);
             },

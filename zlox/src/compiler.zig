@@ -301,22 +301,23 @@ fn string(allocator: Allocator, _: bool) void {
 }
 
 fn namedVariable(allocator: Allocator, name: Token, can_assign: bool) void {
-    const arg = resolveLocal(current.?, &name);
+    var arg = resolveLocal(current.?, &name);
     var get_op: OpCode = undefined;
     var set_op: OpCode = undefined;
-    if (arg != -1) {
+    if (arg != null) {
         get_op = .op_get_local;
         set_op = .op_set_local;
     } else {
+        arg = identifierConstant(allocator, &name);
         get_op = .op_get_global;
         set_op = .op_set_global;
     }
 
     if (can_assign and match(.EQUAL)) {
         expression(allocator);
-        emitBytes(allocator, @enumToInt(set_op), @intCast(u8, arg));
+        emitBytes(allocator, @enumToInt(set_op), arg.?);
     } else {
-        emitBytes(allocator, @enumToInt(get_op), @intCast(u8, arg));
+        emitBytes(allocator, @enumToInt(get_op), arg.?);
     }
 }
 
@@ -410,7 +411,7 @@ fn identifiersEqual(a: *const Token, b: *const Token) bool {
     return std.mem.eql(u8, a.start[0..a.length], b.start[0..b.length]);
 }
 
-fn resolveLocal(compiler: *Compiler, name: *const Token) i16 {
+fn resolveLocal(compiler: *Compiler, name: *const Token) ?u8 {
     var i = compiler.local_count;
     while (i > 0) {
         i -= 1;
@@ -419,11 +420,11 @@ fn resolveLocal(compiler: *Compiler, name: *const Token) i16 {
             if (local.depth == -1) {
                 err("Can't read local variable in its own initializer.");
             }
-            return @intCast(i16, i);
+            return @intCast(u8, i);
         }
     }
 
-    return -1;
+    return null;
 }
 
 fn addLocal(name: Token) void {
