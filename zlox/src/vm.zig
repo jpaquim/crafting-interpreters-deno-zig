@@ -13,8 +13,10 @@ const disassembleInstruction = @import("./debug.zig").disassembleInstruction;
 
 const memory = @import("./memory.zig");
 const ALLOCATE = memory.ALLOCATE;
+const freeObjects = memory.freeObjects;
 
 const o = @import("./object.zig");
+const Obj = o.Obj;
 const takeString = o.takeString;
 const AS_STRING = o.AS_STRING;
 const IS_STRING = o.IS_STRING;
@@ -40,6 +42,7 @@ pub const VM = struct {
     ip: [*]u8,
     stack: [STACK_MAX]Value,
     stack_top: [*]Value,
+    objects: ?*Obj,
 };
 
 const InterpretResult = enum {
@@ -48,7 +51,7 @@ const InterpretResult = enum {
     runtime_error,
 };
 
-var vm: VM = undefined;
+pub var vm: VM = undefined;
 
 fn resetStack() void {
     vm.stack_top = &vm.stack;
@@ -68,9 +71,12 @@ fn runtimeError(comptime format: []const u8, args: anytype) void {
 
 pub fn initVM() void {
     resetStack();
+    vm.objects = null;
 }
 
-pub fn freeVM() void {}
+pub fn freeVM(allocator: Allocator) void {
+    freeObjects(allocator);
+}
 
 fn READ_BYTE() u8 {
     const instruction = vm.ip[0];

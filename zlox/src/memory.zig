@@ -1,5 +1,9 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
+const o = @import("./object.zig");
+const Obj = o.Obj;
+const ObjString = o.ObjString;
+const vm = @import("./vm.zig");
 
 pub fn ALLOCATE(allocator: Allocator, comptime T: type, count: usize) []T {
     return std.mem.bytesAsSlice(T, reallocate(
@@ -8,6 +12,16 @@ pub fn ALLOCATE(allocator: Allocator, comptime T: type, count: usize) []T {
         0,
         @sizeOf(T) * count,
     ).?);
+}
+
+fn FREE(allocator: Allocator, comptime T: type, ptr: *Obj) void {
+    const result = reallocate(
+        allocator,
+        std.mem.asBytes(@fieldParentPtr(T, "obj", ptr)),
+        @sizeOf(T),
+        0,
+    );
+    std.debug.assert(result == null);
 }
 
 pub fn GROW_CAPACITY(capacity: usize) usize {
@@ -45,4 +59,23 @@ pub fn reallocate(allocator: Allocator, slice: ?[]u8, old_size: usize, new_size:
 
     const result = allocator.realloc(slice.?, new_size) catch std.process.exit(1);
     return result;
+}
+
+fn freeObject(allocator: Allocator, object: *Obj) void {
+    switch (object.o_type) {
+        .string => {
+            const string = @fieldParentPtr(ObjString, "obj", object);
+            FREE_ARRAY(allocator, u8, string.chars[0..string.length], string.length);
+            FREE(allocator, ObjString, object);
+        },
+    }
+}
+
+pub fn freeObjects(allocator: Allocator) void {
+    var object = vm.vm.objects;
+    while (object) |obj| {
+        const next = obj.next;
+        freeObject(allocator, obj);
+        object = next;
+    }
 }

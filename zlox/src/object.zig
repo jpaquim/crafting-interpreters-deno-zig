@@ -10,20 +10,21 @@ const Value = v.Value;
 const AS_OBJ = v.AS_OBJ;
 const IS_OBJ = v.IS_OBJ;
 
+const vm = @import("./vm.zig");
+
 const ObjType = enum {
     string,
 };
 
 pub const Obj = struct {
     o_type: ObjType,
-    // TODO: check this, needed for struct not to be zero sized
-    _dummy: usize,
+    next: ?*Obj,
 };
 
-const ObjString = struct {
+pub const ObjString = struct {
     obj: Obj,
     length: usize,
-    chars: [*]const u8,
+    chars: [*]u8,
 };
 
 pub fn OBJ_TYPE(value: Value) ObjType {
@@ -56,17 +57,20 @@ fn allocateObject(allocator: Allocator, size: usize, o_type: ObjType) *Obj {
         size,
     ).?.ptr)));
     object.o_type = o_type;
+
+    object.next = vm.vm.objects;
+    vm.vm.objects = object;
     return object;
 }
 
-fn allocateString(allocator: Allocator, chars: [*]const u8, length: usize) *ObjString {
+fn allocateString(allocator: Allocator, chars: [*]u8, length: usize) *ObjString {
     const string = ALLOCATE_OBJ(allocator, ObjString, .string);
     string.length = length;
     string.chars = chars;
     return string;
 }
 
-pub fn takeString(allocator: Allocator, chars: [*]const u8, length: usize) *ObjString {
+pub fn takeString(allocator: Allocator, chars: [*]u8, length: usize) *ObjString {
     return allocateString(allocator, chars, length);
 }
 
