@@ -277,6 +277,48 @@ fn expressionStatement(allocator: Allocator) void {
     emitByte(allocator, @enumToInt(OpCode.op_pop));
 }
 
+fn forStatement(allocator: Allocator) void {
+    beginScope();
+    consume(.LEFT_PAREN, "Expect '(' after 'for'.");
+    if (match(.SEMICOLON)) {} else if (match(.VAR)) {
+        varDeclaration(allocator);
+    } else {
+        expressionStatement(allocator);
+    }
+
+    var loop_start = currentChunk().count;
+    var exit_jump: ?usize = null;
+    if (!match(.SEMICOLON)) {
+        expression(allocator);
+        consume(.SEMICOLON, "Expect ';' after loop condition.");
+
+        exit_jump = emitJump(allocator, @enumToInt(OpCode.op_jump_if_false));
+        emitByte(allocator, @enumToInt(OpCode.op_pop));
+    }
+
+    if (!match(.RIGHT_PAREN)) {
+        const body_jump = emitJump(allocator, @enumToInt(OpCode.op_jump));
+        const increment_start = currentChunk().count;
+        expression(allocator);
+        emitByte(allocator, @enumToInt(OpCode.op_pop));
+        consume(.RIGHT_PAREN, "Expect ')' after for clauses.");
+
+        emitLoop(allocator, loop_start);
+        loop_start = increment_start;
+        patchJump(body_jump);
+    }
+
+    statement(allocator);
+    emitLoop(allocator, loop_start);
+
+    if (exit_jump != null) {
+        patchJump(exit_jump.?);
+        emitByte(allocator, @enumToInt(OpCode.op_pop));
+    }
+
+    endScope(allocator);
+}
+
 fn ifStatement(allocator: Allocator) void {
     consume(.LEFT_PAREN, "Expect '(' after 'if'.");
     expression(allocator);
@@ -343,6 +385,8 @@ fn declaration(allocator: Allocator) void {
 fn statement(allocator: Allocator) void {
     if (match(.PRINT)) {
         printStatement(allocator);
+    } else if (match(.FOR)) {
+        forStatement(allocator);
     } else if (match(.IF)) {
         ifStatement(allocator);
     } else if (match(.WHILE)) {
