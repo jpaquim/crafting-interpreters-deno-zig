@@ -83,10 +83,10 @@ fn adjustCapacity(allocator: Allocator, table: *Table, capacity: usize) void {
     table.capacity = capacity;
 }
 
-fn tableGet(table: *Table, key: *ObjString, value: *Value) bool {
+pub fn tableGet(table: *Table, key: *ObjString, value: *Value) bool {
     if (table.count == 0) return false;
 
-    const entry = findEntry(table.entries, table.capacity, key);
+    const entry = findEntry(table.entries.?, table.capacity, key);
     if (entry.key == null) return false;
 
     value.* = entry.value;

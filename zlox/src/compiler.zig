@@ -255,6 +255,15 @@ fn string(allocator: Allocator) void {
     emitConstant(allocator, OBJ_VAL(&copyString(allocator, parser.previous.start + 1, parser.previous.length - 2).obj));
 }
 
+fn namedVariable(allocator: Allocator, name: Token) void {
+    const arg = identifierConstant(allocator, &name);
+    emitBytes(allocator, @enumToInt(OpCode.op_get_global), arg);
+}
+
+fn variable(allocator: Allocator) void {
+    namedVariable(allocator, parser.previous);
+}
+
 fn unary(allocator: Allocator) void {
     const operator_type = parser.previous.t_type;
 
@@ -287,7 +296,7 @@ const rules = [_]ParseRule{
     .{ .infix = binary, .precedence = .COMPARISON }, // GREATER_EQUAL
     .{ .infix = binary, .precedence = .COMPARISON }, // LESS
     .{ .infix = binary, .precedence = .COMPARISON }, // LESS_EQUAL
-    .{ .precedence = .NONE }, // IDENTIFIER
+    .{ .prefix = variable, .precedence = .NONE }, // IDENTIFIER
     .{ .prefix = string, .precedence = .NONE }, // STRING
     .{ .prefix = number, .precedence = .NONE }, // NUMBER
     .{ .precedence = .NONE }, // AND
@@ -327,7 +336,7 @@ fn parsePrecedence(allocator: Allocator, precedence: Precedence) void {
     }
 }
 
-fn identifierConstant(allocator: Allocator, name: *Token) u8 {
+fn identifierConstant(allocator: Allocator, name: *const Token) u8 {
     return makeConstant(allocator, OBJ_VAL(&copyString(allocator, name.start, name.length).obj));
 }
 
