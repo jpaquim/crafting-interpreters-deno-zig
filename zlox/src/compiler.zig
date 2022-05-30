@@ -49,7 +49,7 @@ const Precedence = enum {
     PRIMARY,
 };
 
-const ParseFn = fn (allocator: Allocator) void;
+const ParseFn = fn (allocator: Allocator, can_assign: bool) void;
 
 const ParseRule = struct {
     prefix: ?ParseFn = null,
@@ -151,7 +151,7 @@ fn endCompiler(allocator: Allocator) !void {
     }
 }
 
-fn binary(allocator: Allocator) void {
+fn binary(allocator: Allocator, _: bool) void {
     const operator_type = parser.previous.t_type;
     const rule = getRule(operator_type);
     parsePrecedence(allocator, @intToEnum(Precedence, @enumToInt(rule.precedence) + 1));
@@ -171,7 +171,7 @@ fn binary(allocator: Allocator) void {
     }
 }
 
-fn literal(allocator: Allocator) void {
+fn literal(allocator: Allocator, _: bool) void {
     switch (parser.previous.t_type) {
         .FALSE => emitByte(allocator, @enumToInt(OpCode.op_false)),
         .NIL => emitByte(allocator, @enumToInt(OpCode.op_nil)),
@@ -180,7 +180,7 @@ fn literal(allocator: Allocator) void {
     }
 }
 
-fn grouping(allocator: Allocator) void {
+fn grouping(allocator: Allocator, _: bool) void {
     expression(allocator);
     consume(.RIGHT_PAREN, "Expect ')' after expression.");
 }
@@ -246,25 +246,31 @@ fn statement(allocator: Allocator) void {
     }
 }
 
-fn number(allocator: Allocator) void {
+fn number(allocator: Allocator, _: bool) void {
     const value = std.fmt.parseFloat(f64, parser.previous.start[0..parser.previous.length]) catch unreachable;
     emitConstant(allocator, NUMBER_VAL(value));
 }
 
-fn string(allocator: Allocator) void {
+fn string(allocator: Allocator, _: bool) void {
     emitConstant(allocator, OBJ_VAL(&copyString(allocator, parser.previous.start + 1, parser.previous.length - 2).obj));
 }
 
-fn namedVariable(allocator: Allocator, name: Token) void {
+fn namedVariable(allocator: Allocator, name: Token, can_assign: bool) void {
     const arg = identifierConstant(allocator, &name);
-    emitBytes(allocator, @enumToInt(OpCode.op_get_global), arg);
+
+    if (can_assign and match(.EQUAL)) {
+        expression(allocator);
+        emitBytes(allocator, @enumToInt(OpCode.op_set_global), arg);
+    } else {
+        emitBytes(allocator, @enumToInt(OpCode.op_get_global), arg);
+    }
 }
 
-fn variable(allocator: Allocator) void {
-    namedVariable(allocator, parser.previous);
+fn variable(allocator: Allocator, can_assign: bool) void {
+    namedVariable(allocator, parser.previous, can_assign);
 }
 
-fn unary(allocator: Allocator) void {
+fn unary(allocator: Allocator, _: bool) void {
     const operator_type = parser.previous.t_type;
 
     parsePrecedence(allocator, .UNARY);
@@ -327,12 +333,17 @@ fn parsePrecedence(allocator: Allocator, precedence: Precedence) void {
         return;
     }
 
-    prefix_rule.?(allocator);
+    const can_assign = @enumToInt(precedence) <= @enumToInt(Precedence.ASSIGNMENT);
+    prefix_rule.?(allocator, can_assign);
 
     while (@enumToInt(precedence) <= @enumToInt(getRule(parser.current.t_type).precedence)) {
         advance();
         const infix_rule = getRule(parser.previous.t_type).infix;
-        infix_rule.?(allocator);
+        infix_rule.?(allocator, can_assign);
+    }
+
+    if (can_assign and match(.EQUAL)) {
+        err("Invalid assignment target.");
     }
 }
 

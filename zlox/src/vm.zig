@@ -26,6 +26,7 @@ const table = @import("./table.zig");
 const Table = table.Table;
 const initTable = table.initTable;
 const freeTable = table.freeTable;
+const tableDelete = table.tableDelete;
 const tableGet = table.tableGet;
 const tableSet = table.tableSet;
 
@@ -144,6 +145,14 @@ fn run(allocator: Allocator) !InterpretResult {
                 const name = READ_STRING();
                 _ = tableSet(allocator, &vm.globals, name, peek(0));
                 _ = pop();
+            },
+            .op_set_global => {
+                const name = READ_STRING();
+                if (tableSet(allocator, &vm.globals, name, peek(0))) {
+                    _ = tableDelete(&vm.globals, name);
+                    runtimeError("Undefined variable '{s}'.", .{name.chars[0..name.length]});
+                    return .runtime_error;
+                }
             },
             .op_equal => {
                 const b = pop();

@@ -108,10 +108,10 @@ pub fn tableSet(allocator: Allocator, table: *Table, key: *ObjString, value: Val
     return is_new_key;
 }
 
-fn tableDelete(table: *Table, key: *ObjString) bool {
+pub fn tableDelete(table: *Table, key: *ObjString) bool {
     if (table.count == 0) return false;
 
-    const entry = findEntry(table.entries, table.capacity, key);
+    const entry = findEntry(table.entries.?, table.capacity, key);
     if (entry.key == null) return false;
 
     entry.key = null;
