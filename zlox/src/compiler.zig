@@ -140,6 +140,16 @@ fn emitBytes(allocator: Allocator, byte1: u8, byte2: u8) void {
     emitByte(allocator, byte2);
 }
 
+fn emitLoop(allocator: Allocator, loop_start: usize) void {
+    emitByte(allocator, @enumToInt(OpCode.op_loop));
+
+    const offset = currentChunk().count - loop_start + 2;
+    if (offset > std.math.maxInt(u16)) err("Loop body too large.");
+
+    emitByte(allocator, @intCast(u8, offset >> 8) & 0xff);
+    emitByte(allocator, @intCast(u8, offset) & 0xff);
+}
+
 fn emitJump(allocator: Allocator, instruction: u8) usize {
     emitByte(allocator, instruction);
     emitByte(allocator, 0xff);
@@ -291,6 +301,21 @@ fn printStatement(allocator: Allocator) void {
     emitByte(allocator, @enumToInt(OpCode.op_print));
 }
 
+fn whileStatement(allocator: Allocator) void {
+    const loop_start = currentChunk().count;
+    consume(.LEFT_PAREN, "Expect '(' after 'while'.");
+    expression(allocator);
+    consume(.RIGHT_PAREN, "Expect ')' after condition.");
+
+    const exit_jump = emitJump(allocator, @enumToInt(OpCode.op_jump_if_false));
+    emitByte(allocator, @enumToInt(OpCode.op_pop));
+    statement(allocator);
+    emitLoop(allocator, loop_start);
+
+    patchJump(exit_jump);
+    emitByte(allocator, @enumToInt(OpCode.op_pop));
+}
+
 fn synchronize() void {
     parser.panic_mode = false;
 
@@ -320,6 +345,8 @@ fn statement(allocator: Allocator) void {
         printStatement(allocator);
     } else if (match(.IF)) {
         ifStatement(allocator);
+    } else if (match(.WHILE)) {
+        whileStatement(allocator);
     } else if (match(.LEFT_BRACE)) {
         beginScope();
         block(allocator);

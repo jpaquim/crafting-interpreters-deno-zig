@@ -252,6 +252,10 @@ fn run(allocator: Allocator) !InterpretResult {
                 const offset = READ_SHORT();
                 if (isFalsey(peek(0))) vm.ip += offset;
             },
+            .op_loop => {
+                const offset = READ_SHORT();
+                vm.ip -= offset;
+            },
             .op_return => {
                 return .ok;
             },
