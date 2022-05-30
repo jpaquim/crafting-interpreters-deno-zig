@@ -11,6 +11,14 @@ const compile = @import("./compiler.zig").compile;
 const DEBUG_TRACE_EXECUTION = @import("./common.zig").DEBUG_TRACE_EXECUTION;
 const disassembleInstruction = @import("./debug.zig").disassembleInstruction;
 
+const memory = @import("./memory.zig");
+const ALLOCATE = memory.ALLOCATE;
+
+const o = @import("./object.zig");
+const takeString = o.takeString;
+const AS_STRING = o.AS_STRING;
+const IS_STRING = o.IS_STRING;
+
 const v = @import("./value.zig");
 const Value = v.Value;
 const printValue = v.printValue;
@@ -23,6 +31,7 @@ const IS_NIL = v.IS_NIL;
 const IS_NUMBER = v.IS_NUMBER;
 const NIL_VAL = v.NIL_VAL;
 const NUMBER_VAL = v.NUMBER_VAL;
+const OBJ_VAL = v.OBJ_VAL;
 
 const STACK_MAX = 256;
 
@@ -73,7 +82,7 @@ fn READ_CONSTANT() Value {
     return vm.chunk.constants.values.?[READ_BYTE()];
 }
 
-fn run() !InterpretResult {
+fn run(allocator: Allocator) !InterpretResult {
     const stdout = std.io.getStdOut().writer();
 
     while (true) {
@@ -122,13 +131,16 @@ fn run() !InterpretResult {
                 push(BOOL_VAL(a < b));
             },
             .op_add => {
-                if (!IS_NUMBER(peek(0)) or !IS_NUMBER(peek(1))) {
+                if (IS_STRING(peek(0)) and IS_STRING(peek(1))) {
+                    concatenate(allocator);
+                } else if (IS_NUMBER(peek(0)) and IS_NUMBER(peek(1))) {
+                    const b = AS_NUMBER(pop());
+                    const a = AS_NUMBER(pop());
+                    push(NUMBER_VAL(a + b));
+                } else {
                     runtimeError("Operands must be numbers.", .{});
                     return .runtime_error;
                 }
-                const b = AS_NUMBER(pop());
-                const a = AS_NUMBER(pop());
-                push(NUMBER_VAL(a + b));
             },
             .op_subtract => {
                 if (!IS_NUMBER(peek(0)) or !IS_NUMBER(peek(1))) {
@@ -185,7 +197,7 @@ pub fn interpret(allocator: Allocator, source: []const u8) !InterpretResult {
     vm.chunk = &chunk;
     vm.ip = vm.chunk.code.?.ptr;
 
-    const result = try run();
+    const result = try run(allocator);
 
     return result;
 }
@@ -207,4 +219,18 @@ fn peek(distance: usize) Value {
 
 fn isFalsey(value: Value) bool {
     return IS_NIL(value) or (IS_BOOL(value) and !AS_BOOL(value));
+}
+
+fn concatenate(allocator: Allocator) void {
+    const b = AS_STRING(pop());
+    const a = AS_STRING(pop());
+
+    const length = a.length + b.length;
+    const chars = ALLOCATE(allocator, u8, length);
+    std.mem.copy(u8, chars[0..a.length], a.chars[0..a.length]);
+    std.mem.copy(u8, chars[a.length..], b.chars[0..b.length]);
+
+    const result = takeString(allocator, chars.ptr, length);
+    // push(OBJ_VAL(result));
+    push(OBJ_VAL(&result.obj));
 }

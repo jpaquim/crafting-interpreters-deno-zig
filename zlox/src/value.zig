@@ -40,7 +40,7 @@ pub fn IS_NUMBER(value: Value) bool {
 }
 
 pub fn IS_OBJ(value: Value) bool {
-    return value.v_type == .objj;
+    return value.v_type == .obj;
 }
 
 pub fn AS_BOOL(value: Value) bool {

@@ -1,7 +1,7 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
-pub fn ALLOCATE(allocator: Allocator, comptime T: type, count: usize) ?[]T {
+pub fn ALLOCATE(allocator: Allocator, comptime T: type, count: usize) []T {
     return std.mem.bytesAsSlice(T, reallocate(
         allocator,
         null,

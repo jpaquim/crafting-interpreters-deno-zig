@@ -26,11 +26,11 @@ const ObjString = struct {
     chars: [*]const u8,
 };
 
-fn OBJ_TYPE(value: Value) ObjType {
+pub fn OBJ_TYPE(value: Value) ObjType {
     return AS_OBJ(value).o_type;
 }
 
-fn IS_STRING(value: Value) bool {
+pub fn IS_STRING(value: Value) bool {
     return isObjType(value, .string);
 }
 
@@ -66,8 +66,12 @@ fn allocateString(allocator: Allocator, chars: [*]const u8, length: usize) *ObjS
     return string;
 }
 
+pub fn takeString(allocator: Allocator, chars: [*]const u8, length: usize) *ObjString {
+    return allocateString(allocator, chars, length);
+}
+
 pub fn copyString(allocator: Allocator, chars: [*]const u8, length: usize) *ObjString {
-    var heapChars = ALLOCATE(allocator, u8, length + 1).?;
+    const heapChars = ALLOCATE(allocator, u8, length + 1);
     std.mem.copy(u8, heapChars, chars[0..length]);
     return allocateString(allocator, heapChars.ptr, length);
 }
