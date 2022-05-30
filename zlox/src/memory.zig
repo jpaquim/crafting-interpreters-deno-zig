@@ -6,12 +6,12 @@ const ObjString = o.ObjString;
 const vm = @import("./vm.zig");
 
 pub fn ALLOCATE(allocator: Allocator, comptime T: type, count: usize) []T {
-    return std.mem.bytesAsSlice(T, reallocate(
+    return std.mem.bytesAsSlice(T, @alignCast(@alignOf(T), reallocate(
         allocator,
         null,
         0,
         @sizeOf(T) * count,
-    ).?);
+    ).?));
 }
 
 fn FREE(allocator: Allocator, comptime T: type, ptr: *Obj) void {

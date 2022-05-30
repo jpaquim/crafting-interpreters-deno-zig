@@ -115,15 +115,6 @@ pub fn valuesEqual(a: Value, b: Value) bool {
         .bool => return AS_BOOL(a) == AS_BOOL(b),
         .nil => return true,
         .number => return AS_NUMBER(a) == AS_NUMBER(b),
-        .obj => {
-            const a_string = AS_STRING(a);
-            const b_string = AS_STRING(b);
-            return a_string.length == b_string.length and
-                std.mem.eql(
-                u8,
-                a_string.chars[0..a_string.length],
-                b_string.chars[0..b_string.length],
-            );
-        },
+        .obj => return AS_OBJ(a) == AS_OBJ(b),
     }
 }

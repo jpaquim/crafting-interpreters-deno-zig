@@ -21,6 +21,11 @@ const takeString = o.takeString;
 const AS_STRING = o.AS_STRING;
 const IS_STRING = o.IS_STRING;
 
+const table = @import("./table.zig");
+const Table = table.Table;
+const initTable = table.initTable;
+const freeTable = table.freeTable;
+
 const v = @import("./value.zig");
 const Value = v.Value;
 const printValue = v.printValue;
@@ -42,6 +47,7 @@ pub const VM = struct {
     ip: [*]u8,
     stack: [STACK_MAX]Value,
     stack_top: [*]Value,
+    strings: Table,
     objects: ?*Obj,
 };
 
@@ -72,9 +78,11 @@ fn runtimeError(comptime format: []const u8, args: anytype) void {
 pub fn initVM() void {
     resetStack();
     vm.objects = null;
+    initTable(&vm.strings);
 }
 
 pub fn freeVM(allocator: Allocator) void {
+    freeTable(allocator, &vm.strings);
     freeObjects(allocator);
 }
 
