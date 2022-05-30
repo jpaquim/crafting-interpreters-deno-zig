@@ -334,6 +334,17 @@ fn number(allocator: Allocator, _: bool) void {
     emitConstant(allocator, NUMBER_VAL(value));
 }
 
+fn or_(allocator: Allocator, _: bool) void {
+    const else_jump = emitJump(allocator, @enumToInt(OpCode.op_jump_if_false));
+    const end_jump = emitJump(allocator, @enumToInt(OpCode.op_jump));
+
+    patchJump(else_jump);
+    emitByte(allocator, @enumToInt(OpCode.op_pop));
+
+    parsePrecedence(allocator, .OR);
+    patchJump(end_jump);
+}
+
 fn string(allocator: Allocator, _: bool) void {
     emitConstant(allocator, OBJ_VAL(&copyString(allocator, parser.previous.start + 1, parser.previous.length - 2).obj));
 }
@@ -398,7 +409,7 @@ const rules = [_]ParseRule{
     .{ .prefix = variable, .precedence = .NONE }, // IDENTIFIER
     .{ .prefix = string, .precedence = .NONE }, // STRING
     .{ .prefix = number, .precedence = .NONE }, // NUMBER
-    .{ .precedence = .NONE }, // AND
+    .{ .infix = and_, .precedence = .AND }, // AND
     .{ .precedence = .NONE }, // CLASS
     .{ .precedence = .NONE }, // ELSE
     .{ .prefix = literal, .precedence = .NONE }, // FALSE
@@ -406,7 +417,7 @@ const rules = [_]ParseRule{
     .{ .precedence = .NONE }, // FUN
     .{ .precedence = .NONE }, // IF
     .{ .prefix = literal, .precedence = .NONE }, // NIL
-    .{ .precedence = .NONE }, // OR
+    .{ .infix = or_, .precedence = .OR }, // OR
     .{ .precedence = .NONE }, // PRINT
     .{ .precedence = .NONE }, // RETURN
     .{ .precedence = .NONE }, // SUPER
@@ -517,6 +528,15 @@ fn defineVariable(allocator: Allocator, global: u8) void {
     }
 
     emitBytes(allocator, @enumToInt(OpCode.op_define_global), global);
+}
+
+fn and_(allocator: Allocator, _: bool) void {
+    const end_jump = emitJump(allocator, @enumToInt(OpCode.op_jump_if_false));
+
+    emitByte(allocator, @enumToInt(OpCode.op_pop));
+    parsePrecedence(allocator, .AND);
+
+    patchJump(end_jump);
 }
 
 fn getRule(t_type: TokenType) *const ParseRule {
