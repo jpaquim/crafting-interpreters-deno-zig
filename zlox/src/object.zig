@@ -24,6 +24,7 @@ const vm = @import("./vm.zig");
 
 const ObjType = enum {
     function,
+    native,
     string,
 };
 
@@ -37,6 +38,13 @@ pub const ObjFunction = struct {
     arity: usize,
     chunk: Chunk,
     name: ?*ObjString,
+};
+
+pub const NativeFn = fn (arg_count: u8, args: [*]Value) Value;
+
+pub const ObjNative = struct {
+    obj: Obj,
+    function: NativeFn,
 };
 
 pub const ObjString = struct {
@@ -54,12 +62,20 @@ pub fn IS_FUNCTION(value: Value) bool {
     return isObjType(value, .function);
 }
 
+pub fn IS_NATIVE(value: Value) bool {
+    return isObjType(value, .native);
+}
+
 pub fn IS_STRING(value: Value) bool {
     return isObjType(value, .string);
 }
 
 pub fn AS_FUNCTION(value: Value) *ObjFunction {
     return @fieldParentPtr(ObjFunction, "obj", AS_OBJ(value));
+}
+
+pub fn AS_NATIVE(value: Value) NativeFn {
+    return @fieldParentPtr(ObjNative, "obj", AS_OBJ(value)).function;
 }
 
 pub fn AS_STRING(value: Value) *ObjString {
@@ -94,6 +110,12 @@ pub fn newFunction(allocator: Allocator) *ObjFunction {
     function.name = null;
     initChunk(&function.chunk);
     return function;
+}
+
+pub fn newNative(allocator: Allocator, function: NativeFn) *ObjNative {
+    const native = ALLOCATE_OBJ(allocator, ObjNative, .native);
+    native.function = function;
+    return native;
 }
 
 fn allocateString(allocator: Allocator, chars: [*]u8, length: usize, hash: u32) *ObjString {
@@ -149,6 +171,7 @@ fn printFunction(function: *ObjFunction) !void {
 pub fn printObject(value: Value) !void {
     switch (OBJ_TYPE(value)) {
         .function => try printFunction(AS_FUNCTION(value)),
+        .native => try stdout.writeAll("<native fn>"),
         .string => try stdout.writeAll(AS_CSTRING(value)[0..AS_STRING(value).length]),
     }
 }

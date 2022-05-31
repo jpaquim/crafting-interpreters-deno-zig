@@ -67,7 +67,7 @@ pub fn main() anyerror!void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    initVM();
+    initVM(allocator);
     defer freeVM(allocator);
     // read command line arguments
     var iter = std.process.args();

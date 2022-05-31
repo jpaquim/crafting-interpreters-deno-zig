@@ -15,11 +15,15 @@ const ALLOCATE = memory.ALLOCATE;
 const freeObjects = memory.freeObjects;
 
 const o = @import("./object.zig");
+const NativeFn = o.NativeFn;
 const Obj = o.Obj;
 const ObjFunction = o.ObjFunction;
 const ObjString = o.ObjString;
+const copyString = o.copyString;
+const newNative = o.newNative;
 const takeString = o.takeString;
 const AS_FUNCTION = o.AS_FUNCTION;
+const AS_NATIVE = o.AS_NATIVE;
 const AS_STRING = o.AS_STRING;
 const IS_STRING = o.IS_STRING;
 const OBJ_TYPE = o.OBJ_TYPE;
@@ -75,6 +79,14 @@ const InterpretResult = enum {
 
 pub var vm: VM = undefined;
 
+fn clockNative(_: u8, _: [*]Value) Value {
+    var timespec: std.os.timespec = undefined;
+    std.os.clock_gettime(std.os.CLOCK.PROCESS_CPUTIME_ID, &timespec) catch unreachable;
+    const clocks_per_second = 1000000;
+    const clocks = timespec.tv_sec * 1000000 + @divFloor(timespec.tv_nsec, 1000);
+    return NUMBER_VAL(@intToFloat(f64, clocks) / clocks_per_second);
+}
+
 fn resetStack() void {
     vm.stack_top = &vm.stack;
     vm.frame_count = 0;
@@ -103,11 +115,21 @@ fn runtimeError(comptime format: []const u8, args: anytype) void {
     resetStack();
 }
 
-pub fn initVM() void {
+fn defineNative(allocator: Allocator, name: []const u8, function: NativeFn) void {
+    push(OBJ_VAL(&copyString(allocator, name.ptr, name.len).obj));
+    push(OBJ_VAL(&newNative(allocator, function).obj));
+    _ = tableSet(allocator, &vm.globals, AS_STRING(vm.stack[0]), vm.stack[1]);
+    _ = pop();
+    _ = pop();
+}
+
+pub fn initVM(allocator: Allocator) void {
     resetStack();
     vm.objects = null;
     initTable(&vm.globals);
     initTable(&vm.strings);
+
+    defineNative(allocator, "clock", clockNative);
 }
 
 pub fn freeVM(allocator: Allocator) void {
@@ -351,6 +373,13 @@ fn callValue(callee: Value, arg_count: u8) bool {
         switch (OBJ_TYPE(callee)) {
             .function => {
                 return call(AS_FUNCTION(callee), arg_count);
+            },
+            .native => {
+                const native = AS_NATIVE(callee);
+                const result = native(arg_count, vm.stack_top - arg_count);
+                vm.stack_top -= arg_count + 1;
+                push(result);
+                return true;
             },
             else => {},
         }

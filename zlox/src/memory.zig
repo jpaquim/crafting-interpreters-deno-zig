@@ -6,6 +6,7 @@ const freeChunk = chk.freeChunk;
 const o = @import("./object.zig");
 const Obj = o.Obj;
 const ObjFunction = o.ObjFunction;
+const ObjNative = o.ObjNative;
 const ObjString = o.ObjString;
 const vm = @import("./vm.zig");
 
@@ -71,6 +72,9 @@ fn freeObject(allocator: Allocator, object: *Obj) void {
             const function = @fieldParentPtr(ObjFunction, "obj", object);
             freeChunk(allocator, &function.chunk);
             FREE(allocator, ObjFunction, object);
+        },
+        .native => {
+            FREE(allocator, ObjNative, object);
         },
         .string => {
             const string = @fieldParentPtr(ObjString, "obj", object);
