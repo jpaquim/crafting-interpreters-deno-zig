@@ -288,7 +288,16 @@ fn run(allocator: Allocator) !InterpretResult {
                 frame = &vm.frames[vm.frame_count - 1];
             },
             .op_return => {
-                return .ok;
+                const result = pop();
+                vm.frame_count -= 1;
+                if (vm.frame_count == 0) {
+                    _ = pop();
+                    return .ok;
+                }
+
+                vm.stack_top = frame.slots;
+                push(result);
+                frame = &vm.frames[vm.frame_count - 1];
             },
         }
     }

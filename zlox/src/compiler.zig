@@ -168,6 +168,7 @@ fn emitJump(allocator: Allocator, instruction: u8) usize {
 }
 
 fn emitReturn(allocator: Allocator) void {
+    emitByte(allocator, @enumToInt(OpCode.op_nil));
     emitByte(allocator, @enumToInt(OpCode.op_return));
 }
 
@@ -413,6 +414,20 @@ fn printStatement(allocator: Allocator) void {
     emitByte(allocator, @enumToInt(OpCode.op_print));
 }
 
+fn returnStatement(allocator: Allocator) void {
+    if (current.?.f_type == .script) {
+        err("Can't return from top-level code");
+    }
+
+    if (match(.SEMICOLON)) {
+        emitReturn(allocator);
+    } else {
+        expression(allocator);
+        consume(.SEMICOLON, "Expect ';' after return value.");
+        emitByte(allocator, @enumToInt(OpCode.op_return));
+    }
+}
+
 fn whileStatement(allocator: Allocator) void {
     const loop_start = currentChunk().count;
     consume(.LEFT_PAREN, "Expect '(' after 'while'.");
@@ -461,6 +476,8 @@ fn statement(allocator: Allocator) void {
         forStatement(allocator);
     } else if (match(.IF)) {
         ifStatement(allocator);
+    } else if (match(.RETURN)) {
+        returnStatement(allocator);
     } else if (match(.WHILE)) {
         whileStatement(allocator);
     } else if (match(.LEFT_BRACE)) {
