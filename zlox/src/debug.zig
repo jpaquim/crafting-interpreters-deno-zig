@@ -48,6 +48,7 @@ pub fn disassembleInstruction(chunk: *Chunk, offset: usize) !usize {
         .op_jump => return jumpInstruction("OP_JUMP", 1, chunk, offset),
         .op_jump_if_false => return jumpInstruction("OP_JUMP_IF_FALSE", 1, chunk, offset),
         .op_loop => return jumpInstruction("OP_LOOP", -1, chunk, offset),
+        .op_call => return byteInstruction("OP_CALL", chunk, offset),
         .op_return => return simpleInstruction("OP_RETURN", offset),
     }
     stdout.print("Unknown opcode {d}\n", .{instruction});

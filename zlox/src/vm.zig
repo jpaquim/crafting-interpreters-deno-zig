@@ -19,8 +19,10 @@ const Obj = o.Obj;
 const ObjFunction = o.ObjFunction;
 const ObjString = o.ObjString;
 const takeString = o.takeString;
+const AS_FUNCTION = o.AS_FUNCTION;
 const AS_STRING = o.AS_STRING;
 const IS_STRING = o.IS_STRING;
+const OBJ_TYPE = o.OBJ_TYPE;
 
 const table = @import("./table.zig");
 const Table = table.Table;
@@ -40,6 +42,7 @@ const BOOL_VAL = v.BOOL_VAL;
 const IS_BOOL = v.IS_BOOL;
 const IS_NIL = v.IS_NIL;
 const IS_NUMBER = v.IS_NUMBER;
+const IS_OBJ = v.IS_OBJ;
 const NIL_VAL = v.NIL_VAL;
 const NUMBER_VAL = v.NUMBER_VAL;
 const OBJ_VAL = v.OBJ_VAL;
@@ -83,10 +86,20 @@ fn runtimeError(comptime format: []const u8, args: anytype) void {
     stderr.print(format, args) catch unreachable;
     stderr.writeByte('\n') catch unreachable;
 
-    const frame = &vm.frames[vm.frame_count - 1];
-    const instruction = @ptrToInt(frame.ip) - @ptrToInt(frame.function.chunk.code.?.ptr) - 1;
-    const line = frame.function.chunk.lines.?[instruction];
-    stderr.print("[line {d}] in script\n", .{line}) catch unreachable;
+    var i: usize = vm.frame_count;
+    while (i > 0) {
+        i -= 1;
+        const frame = &vm.frames[i];
+        const function = frame.function;
+        const instruction = @ptrToInt(frame.ip) - @ptrToInt(function.chunk.code.?.ptr) - 1;
+        stderr.print("[line {d}] in ", .{function.chunk.lines.?[instruction]}) catch unreachable;
+        if (function.name) |name| {
+            stderr.print("{s}()\n", .{name.chars[0..name.length]}) catch unreachable;
+        } else {
+            stderr.writeAll("script\n") catch unreachable;
+        }
+    }
+
     resetStack();
 }
 
@@ -125,7 +138,7 @@ fn READ_STRING(frame: *CallFrame) *ObjString {
 }
 
 fn run(allocator: Allocator) !InterpretResult {
-    const frame = &vm.frames[vm.frame_count - 1];
+    var frame = &vm.frames[vm.frame_count - 1];
 
     const stdout = std.io.getStdOut().writer();
     while (true) {
@@ -267,6 +280,13 @@ fn run(allocator: Allocator) !InterpretResult {
                 const offset = READ_SHORT(frame);
                 frame.ip -= offset;
             },
+            .op_call => {
+                const arg_count = READ_BYTE(frame);
+                if (!callValue(peek(arg_count), arg_count)) {
+                    return .runtime_error;
+                }
+                frame = &vm.frames[vm.frame_count - 1];
+            },
             .op_return => {
                 return .ok;
             },
@@ -278,11 +298,7 @@ pub fn interpret(allocator: Allocator, source: []const u8) !InterpretResult {
     const function = compile(allocator, source) orelse return InterpretResult.compile_error;
 
     push(OBJ_VAL(&function.obj));
-    const frame = &vm.frames[vm.frame_count];
-    vm.frame_count += 1;
-    frame.function = function;
-    frame.ip = function.chunk.code.?.ptr;
-    frame.slots = &vm.stack;
+    _ = call(function, 0);
 
     return run(allocator);
 }
@@ -300,6 +316,38 @@ fn pop() Value {
 fn peek(distance: usize) Value {
     const ptr = vm.stack_top - 1 - distance;
     return ptr[0];
+}
+
+fn call(function: *ObjFunction, arg_count: u8) bool {
+    if (arg_count != function.arity) {
+        runtimeError("Expected {d} arguments but got {d}.", .{ function.arity, arg_count });
+        return false;
+    }
+
+    if (vm.frame_count == FRAMES_MAX) {
+        runtimeError("Stack overflow.", .{});
+        return false;
+    }
+
+    const frame = &vm.frames[vm.frame_count];
+    vm.frame_count += 1;
+    frame.function = function;
+    frame.ip = function.chunk.code.?.ptr;
+    frame.slots = vm.stack_top - arg_count - 1;
+    return true;
+}
+
+fn callValue(callee: Value, arg_count: u8) bool {
+    if (IS_OBJ(callee)) {
+        switch (OBJ_TYPE(callee)) {
+            .function => {
+                return call(AS_FUNCTION(callee), arg_count);
+            },
+            else => {},
+        }
+    }
+    runtimeError("Can only call functions and classes.", .{});
+    return false;
 }
 
 fn isFalsey(value: Value) bool {

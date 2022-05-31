@@ -265,6 +265,11 @@ fn binary(allocator: Allocator, _: bool) void {
     }
 }
 
+fn call(allocator: Allocator, _: bool) void {
+    const arg_count = argumentList(allocator);
+    emitBytes(allocator, @enumToInt(OpCode.op_call), arg_count);
+}
+
 fn literal(allocator: Allocator, _: bool) void {
     switch (parser.previous.t_type) {
         .FALSE => emitByte(allocator, @enumToInt(OpCode.op_false)),
@@ -525,7 +530,7 @@ fn unary(allocator: Allocator, _: bool) void {
 }
 
 const rules = [_]ParseRule{
-    .{ .prefix = grouping, .precedence = .NONE }, // LEFT_PAREN
+    .{ .prefix = grouping, .infix = call, .precedence = .CALL }, // LEFT_PAREN
     .{ .precedence = .NONE }, // RIGHT_PAREN
     .{ .precedence = .NONE }, // LEFT_BRACE
     .{ .precedence = .NONE }, // RIGHT_BRACE
@@ -667,6 +672,22 @@ fn defineVariable(allocator: Allocator, global: u8) void {
     }
 
     emitBytes(allocator, @enumToInt(OpCode.op_define_global), global);
+}
+
+fn argumentList(allocator: Allocator) u8 {
+    var arg_count: usize = 0;
+    if (!check(.RIGHT_PAREN)) {
+        while (true) {
+            expression(allocator);
+            if (arg_count == 255) {
+                err("Can't have more than 255 arguments.");
+            }
+            arg_count += 1;
+            if (!match(.COMMA)) break;
+        }
+    }
+    consume(.RIGHT_PAREN, "Expect ')' after arguments.");
+    return @intCast(u8, arg_count);
 }
 
 fn and_(allocator: Allocator, _: bool) void {
