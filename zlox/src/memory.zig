@@ -1,7 +1,11 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
+
+const chk = @import("./chunk.zig");
+const freeChunk = chk.freeChunk;
 const o = @import("./object.zig");
 const Obj = o.Obj;
+const ObjFunction = o.ObjFunction;
 const ObjString = o.ObjString;
 const vm = @import("./vm.zig");
 
@@ -63,6 +67,11 @@ pub fn reallocate(allocator: Allocator, slice: ?[]u8, old_size: usize, new_size:
 
 fn freeObject(allocator: Allocator, object: *Obj) void {
     switch (object.o_type) {
+        .function => {
+            const function = @fieldParentPtr(ObjFunction, "obj", object);
+            freeChunk(allocator, &function.chunk);
+            FREE(allocator, ObjFunction, object);
+        },
         .string => {
             const string = @fieldParentPtr(ObjString, "obj", object);
             FREE_ARRAY(allocator, u8, string.chars[0..string.length], string.length);

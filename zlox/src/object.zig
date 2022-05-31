@@ -1,6 +1,10 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
+const chk = @import("./chunk.zig");
+const Chunk = chk.Chunk;
+const initChunk = chk.initChunk;
+
 const memory = @import("./memory.zig");
 const ALLOCATE = memory.ALLOCATE;
 const FREE_ARRAY = memory.FREE_ARRAY;
@@ -19,12 +23,20 @@ const NIL_VAL = v.NIL_VAL;
 const vm = @import("./vm.zig");
 
 const ObjType = enum {
+    function,
     string,
 };
 
 pub const Obj = struct {
     o_type: ObjType,
     next: ?*Obj,
+};
+
+pub const ObjFunction = struct {
+    obj: Obj,
+    arity: usize,
+    chunk: Chunk,
+    name: ?*ObjString,
 };
 
 pub const ObjString = struct {
@@ -38,36 +50,50 @@ pub fn OBJ_TYPE(value: Value) ObjType {
     return AS_OBJ(value).o_type;
 }
 
+pub fn IS_FUNCTION(value: Value) bool {
+    return isObjType(value, .function);
+}
+
 pub fn IS_STRING(value: Value) bool {
     return isObjType(value, .string);
 }
 
+pub fn AS_FUNCTION(value: Value) *ObjFunction {
+    return @fieldParentPtr(ObjFunction, "obj", AS_OBJ(value));
+}
+
 pub fn AS_STRING(value: Value) *ObjString {
     return @fieldParentPtr(ObjString, "obj", AS_OBJ(value));
-    // return @ptrCast(*ObjString, AS_OBJ(value));
 }
 
 pub fn AS_CSTRING(value: Value) [*]const u8 {
-    // return @ptrCast(*ObjString, AS_OBJ(value)).chars;
     return @fieldParentPtr(ObjString, "obj", AS_OBJ(value)).chars;
 }
 
-pub fn ALLOCATE_OBJ(allocator: Allocator, comptime T: type, object_type: ObjType) *T {
+fn ALLOCATE_OBJ(allocator: Allocator, comptime T: type, object_type: ObjType) *T {
     return @fieldParentPtr(T, "obj", allocateObject(allocator, @sizeOf(T), object_type));
 }
 
 fn allocateObject(allocator: Allocator, size: usize, o_type: ObjType) *Obj {
-    const object = @alignCast(@alignOf(Obj), std.mem.bytesAsValue(Obj, @ptrCast(*[8]u8, reallocate(
+    const object = @ptrCast(*Obj, @alignCast(@alignOf(Obj), reallocate(
         allocator,
         null,
         0,
         size,
-    ).?.ptr)));
+    ).?));
     object.o_type = o_type;
 
     object.next = vm.vm.objects;
     vm.vm.objects = object;
     return object;
+}
+
+pub fn newFunction(allocator: Allocator) *ObjFunction {
+    const function = ALLOCATE_OBJ(allocator, ObjFunction, .function);
+    function.arity = 0;
+    function.name = null;
+    initChunk(&function.chunk);
+    return function;
 }
 
 fn allocateString(allocator: Allocator, chars: [*]u8, length: usize, hash: u32) *ObjString {
@@ -110,9 +136,19 @@ pub fn copyString(allocator: Allocator, chars: [*]const u8, length: usize) *ObjS
     return allocateString(allocator, heapChars.ptr, length, hash);
 }
 
+const stdout = std.io.getStdOut().writer();
+
+fn printFunction(function: *ObjFunction) !void {
+    if (function.name == null) {
+        try stdout.writeAll("<script>");
+        return;
+    }
+    try stdout.print("<fn {s}>", .{function.name.?.chars[0..function.name.?.length]});
+}
+
 pub fn printObject(value: Value) !void {
-    const stdout = std.io.getStdOut().writer();
     switch (OBJ_TYPE(value)) {
+        .function => try printFunction(AS_FUNCTION(value)),
         .string => try stdout.writeAll(AS_CSTRING(value)[0..AS_STRING(value).length]),
     }
 }

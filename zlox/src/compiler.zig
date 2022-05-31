@@ -14,7 +14,9 @@ const debug = @import("./debug.zig");
 const disassembleChunk = debug.disassembleChunk;
 
 const object = @import("./object.zig");
+const ObjFunction = object.ObjFunction;
 const copyString = object.copyString;
+const newFunction = object.newFunction;
 
 const scanner = @import("./scanner.zig");
 const Token = scanner.Token;
@@ -64,7 +66,15 @@ const Local = struct {
     depth: i32,
 };
 
+const FunctionType = enum {
+    function,
+    script,
+};
+
 const Compiler = struct {
+    function: ?*ObjFunction,
+    f_type: FunctionType,
+
     locals: [U8_COUNT]Local,
     local_count: usize,
     scope_depth: i32,
@@ -72,10 +82,9 @@ const Compiler = struct {
 
 var parser: Parser = undefined;
 var current: ?*Compiler = null;
-var compiling_chunk: *Chunk = undefined;
 
 fn currentChunk() *Chunk {
-    return compiling_chunk;
+    return &current.?.function.?.chunk;
 }
 
 fn errorAt(token: *Token, message: []const u8) void {
@@ -186,17 +195,35 @@ fn patchJump(offset: usize) void {
     currentChunk().code.?[offset + 1] = @intCast(u8, jump) & 0xff;
 }
 
-fn initCompiler(compiler: *Compiler) void {
+fn initCompiler(allocator: Allocator, compiler: *Compiler, f_type: FunctionType) void {
+    compiler.function = null;
+    compiler.f_type = f_type;
     compiler.local_count = 0;
     compiler.scope_depth = 0;
+    compiler.function = newFunction(allocator);
     current = compiler;
+
+    const local = &current.?.locals[current.?.local_count];
+    current.?.local_count += 1;
+    local.depth = 0;
+    local.name.start = "";
+    local.name.length = 0;
 }
 
-fn endCompiler(allocator: Allocator) !void {
+fn endCompiler(allocator: Allocator) *ObjFunction {
     emitReturn(allocator);
+    const function = current.?.function.?;
+
     if (DEBUG_PRINT_CODE) {
-        try disassembleChunk(currentChunk(), "code");
+        if (!parser.had_error) {
+            disassembleChunk(
+                currentChunk(),
+                if (function.name) |name| name.chars[0..name.length] else "<script>",
+            ) catch unreachable;
+        }
     }
+
+    return function;
 }
 
 fn beginScope() void {
@@ -614,11 +641,10 @@ fn getRule(t_type: TokenType) *const ParseRule {
     return &rules[@enumToInt(t_type)];
 }
 
-pub fn compile(allocator: Allocator, source: []const u8, chunk: *Chunk) !bool {
+pub fn compile(allocator: Allocator, source: []const u8) ?*ObjFunction {
     initScanner(source);
     var compiler: Compiler = undefined;
-    initCompiler(&compiler);
-    compiling_chunk = chunk;
+    initCompiler(allocator, &compiler, .script);
 
     parser.had_error = false;
     parser.panic_mode = false;
@@ -629,6 +655,6 @@ pub fn compile(allocator: Allocator, source: []const u8, chunk: *Chunk) !bool {
         declaration(allocator);
     }
 
-    try endCompiler(allocator);
-    return !parser.had_error;
+    const function = endCompiler(allocator);
+    return if (parser.had_error) null else function;
 }

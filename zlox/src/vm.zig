@@ -2,13 +2,12 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 
 const chk = @import("./chunk.zig");
-const Chunk = chk.Chunk;
 const OpCode = chk.OpCode;
-const freeChunk = chk.freeChunk;
-const initChunk = chk.initChunk;
 
 const compile = @import("./compiler.zig").compile;
-const DEBUG_TRACE_EXECUTION = @import("./common.zig").DEBUG_TRACE_EXECUTION;
+const common = @import("./common.zig");
+const DEBUG_TRACE_EXECUTION = common.DEBUG_TRACE_EXECUTION;
+const U8_COUNT = common.U8_COUNT;
 const disassembleInstruction = @import("./debug.zig").disassembleInstruction;
 
 const memory = @import("./memory.zig");
@@ -17,6 +16,7 @@ const freeObjects = memory.freeObjects;
 
 const o = @import("./object.zig");
 const Obj = o.Obj;
+const ObjFunction = o.ObjFunction;
 const ObjString = o.ObjString;
 const takeString = o.takeString;
 const AS_STRING = o.AS_STRING;
@@ -44,11 +44,19 @@ const NIL_VAL = v.NIL_VAL;
 const NUMBER_VAL = v.NUMBER_VAL;
 const OBJ_VAL = v.OBJ_VAL;
 
-const STACK_MAX = 256;
+const FRAMES_MAX = 64;
+const STACK_MAX = FRAMES_MAX + U8_COUNT;
+
+const CallFrame = struct {
+    function: *ObjFunction,
+    ip: [*]u8,
+    slots: [*]Value,
+};
 
 pub const VM = struct {
-    chunk: *Chunk,
-    ip: [*]u8,
+    frames: [FRAMES_MAX]CallFrame,
+    frame_count: usize,
+
     stack: [STACK_MAX]Value,
     stack_top: [*]Value,
     globals: Table,
@@ -66,6 +74,7 @@ pub var vm: VM = undefined;
 
 fn resetStack() void {
     vm.stack_top = &vm.stack;
+    vm.frame_count = 0;
 }
 
 const stderr = std.io.getStdErr().writer();
@@ -74,8 +83,9 @@ fn runtimeError(comptime format: []const u8, args: anytype) void {
     stderr.print(format, args) catch unreachable;
     stderr.writeByte('\n') catch unreachable;
 
-    const instruction = @ptrToInt(vm.ip) - @ptrToInt(vm.chunk.code.?.ptr) - 1;
-    const line = vm.chunk.lines.?[instruction];
+    const frame = &vm.frames[vm.frame_count - 1];
+    const instruction = @ptrToInt(frame.ip) - @ptrToInt(frame.function.chunk.code.?.ptr) - 1;
+    const line = frame.function.chunk.lines.?[instruction];
     stderr.print("[line {d}] in script\n", .{line}) catch unreachable;
     resetStack();
 }
@@ -93,29 +103,31 @@ pub fn freeVM(allocator: Allocator) void {
     freeObjects(allocator);
 }
 
-fn READ_BYTE() u8 {
-    const instruction = vm.ip[0];
-    vm.ip += 1;
+fn READ_BYTE(frame: *CallFrame) u8 {
+    const instruction = frame.ip[0];
+    frame.ip += 1;
     return instruction;
 }
 
-fn READ_CONSTANT() Value {
-    return vm.chunk.constants.values.?[READ_BYTE()];
+fn READ_CONSTANT(frame: *CallFrame) Value {
+    return frame.function.chunk.constants.values.?[READ_BYTE(frame)];
 }
 
-fn READ_SHORT() u16 {
-    const first = vm.ip[0];
-    const second = vm.ip[1];
-    vm.ip += 2;
+fn READ_SHORT(frame: *CallFrame) u16 {
+    const first = frame.ip[0];
+    const second = frame.ip[1];
+    frame.ip += 2;
     return (@as(u16, first) << 8) | second;
 }
 
-fn READ_STRING() *ObjString {
-    return AS_STRING(READ_CONSTANT());
+fn READ_STRING(frame: *CallFrame) *ObjString {
+    return AS_STRING(READ_CONSTANT(frame));
 }
 
 fn run(allocator: Allocator) !InterpretResult {
     const stdout = std.io.getStdOut().writer();
+
+    const frame = &vm.frames[vm.frame_count - 1];
 
     while (true) {
         if (DEBUG_TRACE_EXECUTION) {
@@ -127,13 +139,13 @@ fn run(allocator: Allocator) !InterpretResult {
                 try stdout.writeAll(" ]");
             }
             try stdout.writeByte('\n');
-            _ = try disassembleInstruction(vm.chunk, @ptrToInt(vm.ip) - @ptrToInt(vm.chunk.code.?.ptr));
+            _ = try disassembleInstruction(&frame.function.chunk, @ptrToInt(frame.ip) - @ptrToInt(frame.function.chunk.code.?.ptr));
         }
 
-        const instruction = @intToEnum(OpCode, READ_BYTE());
+        const instruction = @intToEnum(OpCode, READ_BYTE(frame));
         switch (instruction) {
             .op_constant => {
-                const constant = READ_CONSTANT();
+                const constant = READ_CONSTANT(frame);
                 push(constant);
             },
             .op_nil => push(NIL_VAL),
@@ -141,15 +153,15 @@ fn run(allocator: Allocator) !InterpretResult {
             .op_false => push(BOOL_VAL(false)),
             .op_pop => _ = pop(),
             .op_get_local => {
-                const slot = READ_BYTE();
-                push(vm.stack[slot]);
+                const slot = READ_BYTE(frame);
+                push(frame.slots[slot]);
             },
             .op_set_local => {
-                const slot = READ_BYTE();
-                vm.stack[slot] = peek(0);
+                const slot = READ_BYTE(frame);
+                frame.slots[slot] = peek(0);
             },
             .op_get_global => {
-                const name = READ_STRING();
+                const name = READ_STRING(frame);
                 var value: Value = undefined;
                 if (!tableGet(&vm.globals, name, &value)) {
                     runtimeError("Undefined variable '{s}'.", .{name.chars[0..name.length]});
@@ -158,12 +170,12 @@ fn run(allocator: Allocator) !InterpretResult {
                 push(value);
             },
             .op_define_global => {
-                const name = READ_STRING();
+                const name = READ_STRING(frame);
                 _ = tableSet(allocator, &vm.globals, name, peek(0));
                 _ = pop();
             },
             .op_set_global => {
-                const name = READ_STRING();
+                const name = READ_STRING(frame);
                 if (tableSet(allocator, &vm.globals, name, peek(0))) {
                     _ = tableDelete(&vm.globals, name);
                     runtimeError("Undefined variable '{s}'.", .{name.chars[0..name.length]});
@@ -245,16 +257,16 @@ fn run(allocator: Allocator) !InterpretResult {
                 try stdout.writeByte('\n');
             },
             .op_jump => {
-                const offset = READ_SHORT();
-                vm.ip += offset;
+                const offset = READ_SHORT(frame);
+                frame.ip += offset;
             },
             .op_jump_if_false => {
-                const offset = READ_SHORT();
-                if (isFalsey(peek(0))) vm.ip += offset;
+                const offset = READ_SHORT(frame);
+                if (isFalsey(peek(0))) frame.ip += offset;
             },
             .op_loop => {
-                const offset = READ_SHORT();
-                vm.ip -= offset;
+                const offset = READ_SHORT(frame);
+                frame.ip -= offset;
             },
             .op_return => {
                 return .ok;
@@ -264,19 +276,16 @@ fn run(allocator: Allocator) !InterpretResult {
 }
 
 pub fn interpret(allocator: Allocator, source: []const u8) !InterpretResult {
-    var chunk: Chunk = undefined;
-    initChunk(&chunk);
+    const function = compile(allocator, source) orelse return InterpretResult.compile_error;
 
-    defer freeChunk(allocator, &chunk);
+    push(OBJ_VAL(&function.obj));
+    const frame = &vm.frames[vm.frame_count];
+    vm.frame_count += 1;
+    frame.function = function;
+    frame.ip = function.chunk.code.?.ptr;
+    frame.slots = &vm.stack;
 
-    if (!try compile(allocator, source, &chunk)) return .compile_error;
-
-    vm.chunk = &chunk;
-    vm.ip = vm.chunk.code.?.ptr;
-
-    const result = try run(allocator);
-
-    return result;
+    return run(allocator);
 }
 
 fn push(value: Value) void {
