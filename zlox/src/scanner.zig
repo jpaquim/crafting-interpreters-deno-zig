@@ -69,7 +69,7 @@ pub fn initScanner(source: []const u8) void {
     scanner = .{
         .start = source.ptr,
         .current = source.ptr,
-        .end = source.ptr[source.len + 1 .. source.len + 1].ptr,
+        .end = source.ptr[source.len..source.len].ptr,
         .length = source.len,
         .line = 1,
     };
