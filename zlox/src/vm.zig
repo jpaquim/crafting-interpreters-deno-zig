@@ -125,10 +125,9 @@ fn READ_STRING(frame: *CallFrame) *ObjString {
 }
 
 fn run(allocator: Allocator) !InterpretResult {
-    const stdout = std.io.getStdOut().writer();
-
     const frame = &vm.frames[vm.frame_count - 1];
 
+    const stdout = std.io.getStdOut().writer();
     while (true) {
         if (DEBUG_TRACE_EXECUTION) {
             try stdout.writeAll("          ");

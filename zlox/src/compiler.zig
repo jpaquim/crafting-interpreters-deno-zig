@@ -72,6 +72,7 @@ const FunctionType = enum {
 };
 
 const Compiler = struct {
+    enclosing: ?*Compiler,
     function: ?*ObjFunction,
     f_type: FunctionType,
 
@@ -196,12 +197,16 @@ fn patchJump(offset: usize) void {
 }
 
 fn initCompiler(allocator: Allocator, compiler: *Compiler, f_type: FunctionType) void {
+    compiler.enclosing = current;
     compiler.function = null;
     compiler.f_type = f_type;
     compiler.local_count = 0;
     compiler.scope_depth = 0;
     compiler.function = newFunction(allocator);
     current = compiler;
+    if (f_type != .script) {
+        current.?.function.?.name = copyString(allocator, parser.previous.start, parser.previous.length);
+    }
 
     const local = &current.?.locals[current.?.local_count];
     current.?.local_count += 1;
@@ -223,6 +228,7 @@ fn endCompiler(allocator: Allocator) *ObjFunction {
         }
     }
 
+    current = current.?.enclosing;
     return function;
 }
 
@@ -283,6 +289,38 @@ fn block(allocator: Allocator) void {
     }
 
     consume(.RIGHT_BRACE, "Expect '}' after block.");
+}
+
+fn function_(allocator: Allocator, f_type: FunctionType) void {
+    var compiler: Compiler = undefined;
+    initCompiler(allocator, &compiler, f_type);
+    beginScope();
+
+    consume(.LEFT_PAREN, "Expect '(' after function name.");
+    if (!check(.RIGHT_PAREN)) {
+        while (true) {
+            current.?.function.?.arity += 1;
+            if (current.?.function.?.arity > 255) {
+                errorAtCurrent("Can't have more than 255 parameters.");
+            }
+            const constant = parseVariable(allocator, "Expect parameter name.");
+            defineVariable(allocator, constant);
+            if (!match(.COMMA)) break;
+        }
+    }
+    consume(.RIGHT_PAREN, "Expect ')' after parameters.");
+    consume(.LEFT_BRACE, "Expect '{' before function body.");
+    block(allocator);
+
+    const function = endCompiler(allocator);
+    emitBytes(allocator, @enumToInt(OpCode.op_constant), makeConstant(allocator, OBJ_VAL(&function.obj)));
+}
+
+fn funDeclaration(allocator: Allocator) void {
+    const global = parseVariable(allocator, "Expect function name.");
+    markInitialized();
+    function_(allocator, .function);
+    defineVariable(allocator, global);
 }
 
 fn varDeclaration(allocator: Allocator) void {
@@ -400,7 +438,9 @@ fn synchronize() void {
 }
 
 fn declaration(allocator: Allocator) void {
-    if (match(.VAR)) {
+    if (match(.FUN)) {
+        funDeclaration(allocator);
+    } else if (match(.VAR)) {
         varDeclaration(allocator);
     } else {
         statement(allocator);
@@ -616,6 +656,7 @@ fn parseVariable(allocator: Allocator, error_message: []const u8) u8 {
 }
 
 fn markInitialized() void {
+    if (current.?.scope_depth == 0) return;
     current.?.locals[current.?.local_count - 1].depth = current.?.scope_depth;
 }
 
