@@ -17,11 +17,14 @@ const freeObjects = memory.freeObjects;
 const o = @import("./object.zig");
 const NativeFn = o.NativeFn;
 const Obj = o.Obj;
+const ObjClosure = o.ObjClosure;
 const ObjFunction = o.ObjFunction;
 const ObjString = o.ObjString;
 const copyString = o.copyString;
+const newClosure = o.newClosure;
 const newNative = o.newNative;
 const takeString = o.takeString;
+const AS_CLOSURE = o.AS_CLOSURE;
 const AS_FUNCTION = o.AS_FUNCTION;
 const AS_NATIVE = o.AS_NATIVE;
 const AS_STRING = o.AS_STRING;
@@ -55,7 +58,7 @@ const FRAMES_MAX = 64;
 const STACK_MAX = FRAMES_MAX + U8_COUNT;
 
 const CallFrame = struct {
-    function: *ObjFunction,
+    closure: *ObjClosure,
     ip: [*]u8,
     slots: [*]Value,
 };
@@ -102,7 +105,7 @@ fn runtimeError(comptime format: []const u8, args: anytype) void {
     while (i > 0) {
         i -= 1;
         const frame = &vm.frames[i];
-        const function = frame.function;
+        const function = frame.closure.function;
         const instruction = @ptrToInt(frame.ip) - @ptrToInt(function.chunk.code.?.ptr) - 1;
         stderr.print("[line {d}] in ", .{function.chunk.lines.?[instruction]}) catch unreachable;
         if (function.name) |name| {
@@ -145,7 +148,7 @@ fn READ_BYTE(frame: *CallFrame) u8 {
 }
 
 fn READ_CONSTANT(frame: *CallFrame) Value {
-    return frame.function.chunk.constants.values.?[READ_BYTE(frame)];
+    return frame.closure.function.chunk.constants.values.?[READ_BYTE(frame)];
 }
 
 fn READ_SHORT(frame: *CallFrame) u16 {
@@ -173,7 +176,7 @@ fn run(allocator: Allocator) !InterpretResult {
                 try stdout.writeAll(" ]");
             }
             try stdout.writeByte('\n');
-            _ = try disassembleInstruction(&frame.function.chunk, @ptrToInt(frame.ip) - @ptrToInt(frame.function.chunk.code.?.ptr));
+            _ = try disassembleInstruction(&frame.closure.function.chunk, @ptrToInt(frame.ip) - @ptrToInt(frame.closure.function.chunk.code.?.ptr));
         }
 
         const instruction = @intToEnum(OpCode, READ_BYTE(frame));
@@ -309,6 +312,11 @@ fn run(allocator: Allocator) !InterpretResult {
                 }
                 frame = &vm.frames[vm.frame_count - 1];
             },
+            .op_closure => {
+                const function = AS_FUNCTION(READ_CONSTANT(frame));
+                const closure = newClosure(allocator, function);
+                push(OBJ_VAL(&closure.obj));
+            },
             .op_return => {
                 const result = pop();
                 vm.frame_count -= 1;
@@ -329,7 +337,10 @@ pub fn interpret(allocator: Allocator, source: []const u8) !InterpretResult {
     const function = compile(allocator, source) orelse return InterpretResult.compile_error;
 
     push(OBJ_VAL(&function.obj));
-    _ = call(function, 0);
+    const closure = newClosure(allocator, function);
+    _ = pop();
+    push(OBJ_VAL(&closure.obj));
+    _ = call(closure, 0);
 
     return run(allocator);
 }
@@ -349,9 +360,9 @@ fn peek(distance: usize) Value {
     return ptr[0];
 }
 
-fn call(function: *ObjFunction, arg_count: u8) bool {
-    if (arg_count != function.arity) {
-        runtimeError("Expected {d} arguments but got {d}.", .{ function.arity, arg_count });
+fn call(closure: *ObjClosure, arg_count: u8) bool {
+    if (arg_count != closure.function.arity) {
+        runtimeError("Expected {d} arguments but got {d}.", .{ closure.function.arity, arg_count });
         return false;
     }
 
@@ -362,8 +373,8 @@ fn call(function: *ObjFunction, arg_count: u8) bool {
 
     const frame = &vm.frames[vm.frame_count];
     vm.frame_count += 1;
-    frame.function = function;
-    frame.ip = function.chunk.code.?.ptr;
+    frame.closure = closure;
+    frame.ip = closure.function.chunk.code.?.ptr;
     frame.slots = vm.stack_top - arg_count - 1;
     return true;
 }
@@ -371,8 +382,8 @@ fn call(function: *ObjFunction, arg_count: u8) bool {
 fn callValue(callee: Value, arg_count: u8) bool {
     if (IS_OBJ(callee)) {
         switch (OBJ_TYPE(callee)) {
-            .function => {
-                return call(AS_FUNCTION(callee), arg_count);
+            .closure => {
+                return call(AS_CLOSURE(callee), arg_count);
             },
             .native => {
                 const native = AS_NATIVE(callee);

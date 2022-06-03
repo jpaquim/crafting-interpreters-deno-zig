@@ -5,6 +5,7 @@ const chk = @import("./chunk.zig");
 const freeChunk = chk.freeChunk;
 const o = @import("./object.zig");
 const Obj = o.Obj;
+const ObjClosure = o.ObjClosure;
 const ObjFunction = o.ObjFunction;
 const ObjNative = o.ObjNative;
 const ObjString = o.ObjString;
@@ -68,6 +69,9 @@ pub fn reallocate(allocator: Allocator, slice: ?[]u8, old_size: usize, new_size:
 
 fn freeObject(allocator: Allocator, object: *Obj) void {
     switch (object.o_type) {
+        .closure => {
+            FREE(allocator, ObjClosure, object);
+        },
         .function => {
             const function = @fieldParentPtr(ObjFunction, "obj", object);
             freeChunk(allocator, &function.chunk);

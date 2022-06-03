@@ -49,9 +49,16 @@ pub fn disassembleInstruction(chunk: *Chunk, offset: usize) !usize {
         .op_jump_if_false => return jumpInstruction("OP_JUMP_IF_FALSE", 1, chunk, offset),
         .op_loop => return jumpInstruction("OP_LOOP", -1, chunk, offset),
         .op_call => return byteInstruction("OP_CALL", chunk, offset),
+        .op_closure => {
+            const constant = chunk.code.?.ptr[offset + 1];
+            try stdout.print("{s:<16} {d:4} ", .{ "OP_CLOSURE", constant });
+            try printValue(chunk.constants.values.?[constant]);
+            try stdout.writeByte('\n');
+            return offset + 2;
+        },
         .op_return => return simpleInstruction("OP_RETURN", offset),
     }
-    stdout.print("Unknown opcode {d}\n", .{instruction});
+    try stdout.print("Unknown opcode {d}\n", .{instruction});
     return offset + 1;
 }
 

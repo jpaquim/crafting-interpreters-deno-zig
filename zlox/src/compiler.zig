@@ -319,7 +319,7 @@ fn function_(allocator: Allocator, f_type: FunctionType) void {
     block(allocator);
 
     const function = endCompiler(allocator);
-    emitBytes(allocator, @enumToInt(OpCode.op_constant), makeConstant(allocator, OBJ_VAL(&function.obj)));
+    emitBytes(allocator, @enumToInt(OpCode.op_closure), makeConstant(allocator, OBJ_VAL(&function.obj)));
 }
 
 fn funDeclaration(allocator: Allocator) void {

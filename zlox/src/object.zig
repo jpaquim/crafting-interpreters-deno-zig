@@ -23,6 +23,7 @@ const NIL_VAL = v.NIL_VAL;
 const vm = @import("./vm.zig");
 
 const ObjType = enum {
+    closure,
     function,
     native,
     string,
@@ -54,8 +55,17 @@ pub const ObjString = struct {
     hash: u32,
 };
 
+pub const ObjClosure = struct {
+    obj: Obj,
+    function: *ObjFunction,
+};
+
 pub fn OBJ_TYPE(value: Value) ObjType {
     return AS_OBJ(value).o_type;
+}
+
+pub fn IS_CLOSURE(value: Value) bool {
+    return isObjType(value, .closure);
 }
 
 pub fn IS_FUNCTION(value: Value) bool {
@@ -68,6 +78,10 @@ pub fn IS_NATIVE(value: Value) bool {
 
 pub fn IS_STRING(value: Value) bool {
     return isObjType(value, .string);
+}
+
+pub fn AS_CLOSURE(value: Value) *ObjClosure {
+    return @fieldParentPtr(ObjClosure, "obj", AS_OBJ(value));
 }
 
 pub fn AS_FUNCTION(value: Value) *ObjFunction {
@@ -102,6 +116,12 @@ fn allocateObject(allocator: Allocator, size: usize, o_type: ObjType) *Obj {
     object.next = vm.vm.objects;
     vm.vm.objects = object;
     return object;
+}
+
+pub fn newClosure(allocator: Allocator, function: *ObjFunction) *ObjClosure {
+    const closure = ALLOCATE_OBJ(allocator, ObjClosure, .closure);
+    closure.function = function;
+    return closure;
 }
 
 pub fn newFunction(allocator: Allocator) *ObjFunction {
@@ -170,6 +190,7 @@ fn printFunction(function: *ObjFunction) !void {
 
 pub fn printObject(value: Value) !void {
     switch (OBJ_TYPE(value)) {
+        .closure => try printFunction(AS_CLOSURE(value).function),
         .function => try printFunction(AS_FUNCTION(value)),
         .native => try stdout.writeAll("<native fn>"),
         .string => try stdout.writeAll(AS_CSTRING(value)[0..AS_STRING(value).length]),
