@@ -73,6 +73,7 @@ pub const VM = struct {
     stack_top: [*]Value,
     globals: Table,
     strings: Table,
+    open_upvalues: ?*ObjUpvalue,
     objects: ?*Obj,
 };
 
@@ -95,6 +96,7 @@ fn clockNative(_: u8, _: [*]Value) Value {
 fn resetStack() void {
     vm.stack_top = &vm.stack;
     vm.frame_count = 0;
+    vm.open_upvalues = null;
 }
 
 const stderr = std.io.getStdErr().writer();
@@ -336,8 +338,13 @@ fn run(allocator: Allocator) !InterpretResult {
                     }
                 }
             },
+            .op_close_upvalue => {
+                closeUpvalues(@ptrCast(*Value, vm.stack_top - 1));
+                _ = pop();
+            },
             .op_return => {
                 const result = pop();
+                closeUpvalues(&frame.slots[0]);
                 vm.frame_count -= 1;
                 if (vm.frame_count == 0) {
                     _ = pop();
@@ -419,8 +426,34 @@ fn callValue(callee: Value, arg_count: u8) bool {
 }
 
 fn captureUpvalue(allocator: Allocator, local: *Value) *ObjUpvalue {
+    var prev_upvalue: ?*ObjUpvalue = null;
+    var upvalue = vm.open_upvalues;
+    while (upvalue != null and @ptrToInt(upvalue.?.location) > @ptrToInt(local)) : (upvalue = upvalue.?.next) {
+        prev_upvalue = upvalue;
+    }
+
+    if (upvalue != null and upvalue.?.location == local) {
+        return upvalue.?;
+    }
+
     const created_upvalue = newUpvalue(allocator, local);
+
+    if (prev_upvalue == null) {
+        vm.open_upvalues = created_upvalue;
+    } else {
+        prev_upvalue.?.next = created_upvalue;
+    }
     return created_upvalue;
+}
+
+fn closeUpvalues(last_: *Value) void {
+    var last = last_;
+    while (vm.open_upvalues != null and @ptrToInt(vm.open_upvalues.?.location) >= @ptrToInt(last)) {
+        const upvalue = @ptrCast(*ObjUpvalue, vm.open_upvalues.?);
+        upvalue.closed = upvalue.location.*;
+        upvalue.location = &upvalue.closed;
+        vm.open_upvalues = upvalue.next;
+    }
 }
 
 fn isFalsey(value: Value) bool {

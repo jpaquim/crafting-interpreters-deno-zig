@@ -76,6 +76,7 @@ pub fn disassembleInstruction(chunk: *Chunk, offset: usize) !usize {
 
             return offset_;
         },
+        .op_close_upvalue => return simpleInstruction("OP_CLOSE_UPVALUE", offset),
         .op_return => return simpleInstruction("OP_RETURN", offset),
     }
     try stdout.print("Unknown opcode {d}\n", .{instruction});

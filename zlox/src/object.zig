@@ -60,6 +60,8 @@ pub const ObjString = struct {
 pub const ObjUpvalue = struct {
     obj: Obj,
     location: *Value,
+    closed: Value,
+    next: ?*ObjUpvalue,
 };
 
 pub const ObjClosure = struct {
@@ -197,7 +199,9 @@ pub fn copyString(allocator: Allocator, chars: [*]const u8, length: usize) *ObjS
 
 pub fn newUpvalue(allocator: Allocator, slot: *Value) *ObjUpvalue {
     const upvalue = ALLOCATE_OBJ(allocator, ObjUpvalue, .upvalue);
+    upvalue.closed = NIL_VAL;
     upvalue.location = slot;
+    upvalue.next = null;
     return upvalue;
 }
 

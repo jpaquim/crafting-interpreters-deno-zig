@@ -64,6 +64,7 @@ const ParseRule = struct {
 const Local = struct {
     name: Token,
     depth: i32,
+    is_captured: bool,
 };
 
 const Upvalue = struct {
@@ -218,6 +219,7 @@ fn initCompiler(allocator: Allocator, compiler: *Compiler, f_type: FunctionType)
     const local = &current.?.locals[current.?.local_count];
     current.?.local_count += 1;
     local.depth = 0;
+    local.is_captured = false;
     local.name.start = "";
     local.name.length = 0;
 }
@@ -247,7 +249,11 @@ fn endScope(allocator: Allocator) void {
     current.?.scope_depth -= 1;
 
     while (current.?.local_count > 0 and current.?.locals[current.?.local_count - 1].depth > current.?.scope_depth) {
-        emitByte(allocator, @enumToInt(OpCode.op_pop));
+        if (current.?.locals[current.?.local_count - 1].is_captured) {
+            emitByte(allocator, @enumToInt(OpCode.op_close_upvalue));
+        } else {
+            emitByte(allocator, @enumToInt(OpCode.op_pop));
+        }
         current.?.local_count -= 1;
     }
 }
@@ -677,6 +683,7 @@ fn resolveUpvalue(compiler: *Compiler, name: *const Token) ?u8 {
 
     const local = resolveLocal(compiler.enclosing.?, name);
     if (local != null) {
+        compiler.enclosing.?.locals[local.?].is_captured = true;
         return addUpvalue(compiler, local.?, true);
     }
 
@@ -698,6 +705,7 @@ fn addLocal(name: Token) void {
     current.?.local_count += 1;
     local.name = name;
     local.depth = -1;
+    local.is_captured = false;
 }
 
 fn declareVariable() void {
