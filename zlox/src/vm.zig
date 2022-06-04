@@ -225,11 +225,11 @@ fn run(allocator: Allocator) !InterpretResult {
             },
             .op_get_upvalue => {
                 const slot = READ_BYTE(frame);
-                push(frame.closure.upvalues[slot].?.location.*);
+                push(frame.closure.upvalues.?[slot].?.location.*);
             },
             .op_set_upvalue => {
                 const slot = READ_BYTE(frame);
-                frame.closure.upvalues[slot].?.location.* = peek(0);
+                frame.closure.upvalues.?[slot].?.location.* = peek(0);
             },
             .op_equal => {
                 const b = pop();
@@ -328,13 +328,14 @@ fn run(allocator: Allocator) !InterpretResult {
                 const function = AS_FUNCTION(READ_CONSTANT(frame));
                 const closure = newClosure(allocator, function);
                 push(OBJ_VAL(&closure.obj));
-                for (closure.upvalues[0..closure.upvalue_count]) |*upvalue| {
+                var i: usize = 0;
+                while (i < closure.upvalue_count) : (i += 1) {
                     const is_local = READ_BYTE(frame);
                     const index = READ_BYTE(frame);
                     if (is_local == 1) {
-                        upvalue.* = captureUpvalue(allocator, @ptrCast(*Value, frame.slots + index));
+                        closure.upvalues.?[i] = captureUpvalue(allocator, @ptrCast(*Value, frame.slots + index));
                     } else {
-                        upvalue.* = frame.closure.upvalues[index];
+                        closure.upvalues.?[i] = frame.closure.upvalues.?[index];
                     }
                 }
             },
@@ -465,7 +466,7 @@ fn concatenate(allocator: Allocator) void {
     const a = AS_STRING(pop());
 
     const length = a.length + b.length;
-    const chars = ALLOCATE(allocator, u8, length);
+    const chars = ALLOCATE(allocator, u8, length).?;
     std.mem.copy(u8, chars[0..a.length], a.chars[0..a.length]);
     std.mem.copy(u8, chars[a.length..], b.chars[0..b.length]);
 

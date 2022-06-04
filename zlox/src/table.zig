@@ -60,7 +60,7 @@ fn findEntry(entries: [*]Entry, capacity: usize, key: *ObjString) *Entry {
 }
 
 fn adjustCapacity(allocator: Allocator, table: *Table, capacity: usize) void {
-    const entries = ALLOCATE(allocator, Entry, capacity);
+    const entries = ALLOCATE(allocator, Entry, capacity).?;
     for (entries[0..capacity]) |*entry| {
         entry.key = null;
         entry.value = NIL_VAL;

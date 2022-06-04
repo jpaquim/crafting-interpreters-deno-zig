@@ -12,13 +12,9 @@ const ObjString = o.ObjString;
 const ObjUpvalue = o.ObjUpvalue;
 const vm = @import("./vm.zig");
 
-pub fn ALLOCATE(allocator: Allocator, comptime T: type, count: usize) []T {
-    return std.mem.bytesAsSlice(T, @alignCast(@alignOf(T), reallocate(
-        allocator,
-        null,
-        0,
-        @sizeOf(T) * count,
-    ).?));
+pub fn ALLOCATE(allocator: Allocator, comptime T: type, count: usize) ?[]T {
+    const ptr = reallocate(allocator, null, 0, @sizeOf(T) * count);
+    return if (ptr) |bytes| std.mem.bytesAsSlice(T, @alignCast(@alignOf(T), bytes)) else null;
 }
 
 fn FREE(allocator: Allocator, comptime T: type, ptr: *Obj) void {
@@ -72,7 +68,7 @@ fn freeObject(allocator: Allocator, object: *Obj) void {
     switch (object.o_type) {
         .closure => {
             const closure = @fieldParentPtr(ObjClosure, "obj", object);
-            FREE_ARRAY(allocator, ?*ObjUpvalue, closure.upvalues[0..closure.upvalue_count], closure.upvalue_count);
+            FREE_ARRAY(allocator, ?*ObjUpvalue, if (closure.upvalues == null) null else closure.upvalues.?[0..closure.upvalue_count], closure.upvalue_count);
             FREE(allocator, ObjClosure, object);
         },
         .function => {

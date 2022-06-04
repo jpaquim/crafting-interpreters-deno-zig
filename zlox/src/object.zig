@@ -67,7 +67,7 @@ pub const ObjUpvalue = struct {
 pub const ObjClosure = struct {
     obj: Obj,
     function: *ObjFunction,
-    upvalues: [*]?*ObjUpvalue,
+    upvalues: ?[*]?*ObjUpvalue,
     upvalue_count: usize,
 };
 
@@ -131,13 +131,14 @@ fn allocateObject(allocator: Allocator, size: usize, o_type: ObjType) *Obj {
 
 pub fn newClosure(allocator: Allocator, function: *ObjFunction) *ObjClosure {
     const upvalues = ALLOCATE(allocator, ?*ObjUpvalue, function.upvalue_count);
-    for (upvalues) |*upvalue| {
-        upvalue.* = null;
+    var i: usize = 0;
+    while (i < function.upvalue_count) : (i += 1) {
+        upvalues.?[i] = null;
     }
 
     const closure = ALLOCATE_OBJ(allocator, ObjClosure, .closure);
     closure.function = function;
-    closure.upvalues = upvalues.ptr;
+    closure.upvalues = if (upvalues == null) null else upvalues.?.ptr;
     closure.upvalue_count = function.upvalue_count;
     return closure;
 }
@@ -192,7 +193,7 @@ pub fn copyString(allocator: Allocator, chars: [*]const u8, length: usize) *ObjS
 
     if (interned != null) return interned.?;
 
-    const heapChars = ALLOCATE(allocator, u8, length + 1);
+    const heapChars = ALLOCATE(allocator, u8, length + 1).?;
     std.mem.copy(u8, heapChars, chars[0..length]);
     return allocateString(allocator, heapChars.ptr, length, hash);
 }
