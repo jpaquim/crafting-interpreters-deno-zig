@@ -27,6 +27,7 @@ const ObjType = enum {
     function,
     native,
     string,
+    upvalue,
 };
 
 pub const Obj = struct {
@@ -37,6 +38,7 @@ pub const Obj = struct {
 pub const ObjFunction = struct {
     obj: Obj,
     arity: usize,
+    upvalue_count: usize,
     chunk: Chunk,
     name: ?*ObjString,
 };
@@ -55,9 +57,16 @@ pub const ObjString = struct {
     hash: u32,
 };
 
+pub const ObjUpvalue = struct {
+    obj: Obj,
+    location: *Value,
+};
+
 pub const ObjClosure = struct {
     obj: Obj,
     function: *ObjFunction,
+    upvalues: [*]?*ObjUpvalue,
+    upvalue_count: usize,
 };
 
 pub fn OBJ_TYPE(value: Value) ObjType {
@@ -119,14 +128,22 @@ fn allocateObject(allocator: Allocator, size: usize, o_type: ObjType) *Obj {
 }
 
 pub fn newClosure(allocator: Allocator, function: *ObjFunction) *ObjClosure {
+    const upvalues = ALLOCATE(allocator, ?*ObjUpvalue, function.upvalue_count);
+    for (upvalues) |*upvalue| {
+        upvalue.* = null;
+    }
+
     const closure = ALLOCATE_OBJ(allocator, ObjClosure, .closure);
     closure.function = function;
+    closure.upvalues = upvalues.ptr;
+    closure.upvalue_count = function.upvalue_count;
     return closure;
 }
 
 pub fn newFunction(allocator: Allocator) *ObjFunction {
     const function = ALLOCATE_OBJ(allocator, ObjFunction, .function);
     function.arity = 0;
+    function.upvalue_count = 0;
     function.name = null;
     initChunk(&function.chunk);
     return function;
@@ -178,6 +195,12 @@ pub fn copyString(allocator: Allocator, chars: [*]const u8, length: usize) *ObjS
     return allocateString(allocator, heapChars.ptr, length, hash);
 }
 
+pub fn newUpvalue(allocator: Allocator, slot: *Value) *ObjUpvalue {
+    const upvalue = ALLOCATE_OBJ(allocator, ObjUpvalue, .upvalue);
+    upvalue.location = slot;
+    return upvalue;
+}
+
 const stdout = std.io.getStdOut().writer();
 
 fn printFunction(function: *ObjFunction) !void {
@@ -194,6 +217,8 @@ pub fn printObject(value: Value) !void {
         .function => try printFunction(AS_FUNCTION(value)),
         .native => try stdout.writeAll("<native fn>"),
         .string => try stdout.writeAll(AS_CSTRING(value)[0..AS_STRING(value).length]),
+        .upvalue => unreachable,
+        // .upvalue => try stdout.writeAll("upvalue"),
     }
 }
 

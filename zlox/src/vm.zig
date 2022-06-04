@@ -20,9 +20,11 @@ const Obj = o.Obj;
 const ObjClosure = o.ObjClosure;
 const ObjFunction = o.ObjFunction;
 const ObjString = o.ObjString;
+const ObjUpvalue = o.ObjUpvalue;
 const copyString = o.copyString;
 const newClosure = o.newClosure;
 const newNative = o.newNative;
+const newUpvalue = o.newUpvalue;
 const takeString = o.takeString;
 const AS_CLOSURE = o.AS_CLOSURE;
 const AS_FUNCTION = o.AS_FUNCTION;
@@ -219,6 +221,14 @@ fn run(allocator: Allocator) !InterpretResult {
                     return .runtime_error;
                 }
             },
+            .op_get_upvalue => {
+                const slot = READ_BYTE(frame);
+                push(frame.closure.upvalues[slot].?.location.*);
+            },
+            .op_set_upvalue => {
+                const slot = READ_BYTE(frame);
+                frame.closure.upvalues[slot].?.location.* = peek(0);
+            },
             .op_equal => {
                 const b = pop();
                 const a = pop();
@@ -316,6 +326,15 @@ fn run(allocator: Allocator) !InterpretResult {
                 const function = AS_FUNCTION(READ_CONSTANT(frame));
                 const closure = newClosure(allocator, function);
                 push(OBJ_VAL(&closure.obj));
+                for (closure.upvalues[0..closure.upvalue_count]) |*upvalue| {
+                    const is_local = READ_BYTE(frame);
+                    const index = READ_BYTE(frame);
+                    if (is_local == 1) {
+                        upvalue.* = captureUpvalue(allocator, @ptrCast(*Value, frame.slots + index));
+                    } else {
+                        upvalue.* = frame.closure.upvalues[index];
+                    }
+                }
             },
             .op_return => {
                 const result = pop();
@@ -397,6 +416,11 @@ fn callValue(callee: Value, arg_count: u8) bool {
     }
     runtimeError("Can only call functions and classes.", .{});
     return false;
+}
+
+fn captureUpvalue(allocator: Allocator, local: *Value) *ObjUpvalue {
+    const created_upvalue = newUpvalue(allocator, local);
+    return created_upvalue;
 }
 
 fn isFalsey(value: Value) bool {

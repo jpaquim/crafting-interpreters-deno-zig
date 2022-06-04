@@ -4,6 +4,8 @@ const chk = @import("./chunk.zig");
 const Chunk = chk.Chunk;
 const OpCode = chk.OpCode;
 
+const AS_FUNCTION = @import("./object.zig").AS_FUNCTION;
+
 const printValue = @import("./value.zig").printValue;
 
 const stdout = std.io.getStdOut().writer();
@@ -35,6 +37,8 @@ pub fn disassembleInstruction(chunk: *Chunk, offset: usize) !usize {
         .op_get_global => return constantInstruction("OP_GET_GLOBAL", chunk, offset),
         .op_define_global => return constantInstruction("OP_DEFINE_GLOBAL", chunk, offset),
         .op_set_global => return constantInstruction("OP_SET_GLOBAL", chunk, offset),
+        .op_get_upvalue => return byteInstruction("OP_GET_UPVALUE", chunk, offset),
+        .op_set_upvalue => return byteInstruction("OP_SET_UPVALUE", chunk, offset),
         .op_equal => return simpleInstruction("OP_EQUAL", offset),
         .op_greater => return simpleInstruction("OP_GREATER", offset),
         .op_less => return simpleInstruction("OP_LESS", offset),
@@ -50,11 +54,27 @@ pub fn disassembleInstruction(chunk: *Chunk, offset: usize) !usize {
         .op_loop => return jumpInstruction("OP_LOOP", -1, chunk, offset),
         .op_call => return byteInstruction("OP_CALL", chunk, offset),
         .op_closure => {
-            const constant = chunk.code.?.ptr[offset + 1];
+            var offset_ = offset + 1;
+            const constant = chunk.code.?.ptr[offset_];
+            offset_ += 1;
             try stdout.print("{s:<16} {d:4} ", .{ "OP_CLOSURE", constant });
             try printValue(chunk.constants.values.?[constant]);
             try stdout.writeByte('\n');
-            return offset + 2;
+
+            const function = AS_FUNCTION(chunk.constants.values.?[constant]);
+            var j: usize = 0;
+            while (j < function.upvalue_count) : (j += 1) {
+                const is_local = chunk.code.?[offset_];
+                offset_ += 1;
+                const index = chunk.code.?[offset_];
+                offset_ += 1;
+                try stdout.print(
+                    "{d:0>4}      |                     {s} {d}\n",
+                    .{ offset - 2, if (is_local == 1) @as([]const u8, "local") else "upvalue", index },
+                );
+            }
+
+            return offset_;
         },
         .op_return => return simpleInstruction("OP_RETURN", offset),
     }

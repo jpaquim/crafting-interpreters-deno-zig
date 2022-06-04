@@ -9,6 +9,7 @@ const ObjClosure = o.ObjClosure;
 const ObjFunction = o.ObjFunction;
 const ObjNative = o.ObjNative;
 const ObjString = o.ObjString;
+const ObjUpvalue = o.ObjUpvalue;
 const vm = @import("./vm.zig");
 
 pub fn ALLOCATE(allocator: Allocator, comptime T: type, count: usize) []T {
@@ -70,6 +71,8 @@ pub fn reallocate(allocator: Allocator, slice: ?[]u8, old_size: usize, new_size:
 fn freeObject(allocator: Allocator, object: *Obj) void {
     switch (object.o_type) {
         .closure => {
+            const closure = @fieldParentPtr(ObjClosure, "obj", object);
+            FREE_ARRAY(allocator, ?*ObjUpvalue, closure.upvalues[0..closure.upvalue_count], closure.upvalue_count);
             FREE(allocator, ObjClosure, object);
         },
         .function => {
@@ -84,6 +87,9 @@ fn freeObject(allocator: Allocator, object: *Obj) void {
             const string = @fieldParentPtr(ObjString, "obj", object);
             FREE_ARRAY(allocator, u8, string.chars[0..string.length], string.length);
             FREE(allocator, ObjString, object);
+        },
+        .upvalue => {
+            FREE(allocator, ObjUpvalue, object);
         },
     }
 }

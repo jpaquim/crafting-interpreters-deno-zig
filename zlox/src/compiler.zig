@@ -66,6 +66,11 @@ const Local = struct {
     depth: i32,
 };
 
+const Upvalue = struct {
+    index: u8,
+    is_local: bool,
+};
+
 const FunctionType = enum {
     function,
     script,
@@ -78,6 +83,7 @@ const Compiler = struct {
 
     locals: [U8_COUNT]Local,
     local_count: usize,
+    upvalues: [U8_COUNT]Upvalue,
     scope_depth: i32,
 };
 
@@ -320,6 +326,11 @@ fn function_(allocator: Allocator, f_type: FunctionType) void {
 
     const function = endCompiler(allocator);
     emitBytes(allocator, @enumToInt(OpCode.op_closure), makeConstant(allocator, OBJ_VAL(&function.obj)));
+
+    for (compiler.upvalues[0..function.upvalue_count]) |upvalue| {
+        emitByte(allocator, if (upvalue.is_local) 1 else 0);
+        emitByte(allocator, upvalue.index);
+    }
 }
 
 fn funDeclaration(allocator: Allocator) void {
@@ -516,6 +527,10 @@ fn namedVariable(allocator: Allocator, name: Token, can_assign: bool) void {
     if (arg != null) {
         get_op = .op_get_local;
         set_op = .op_set_local;
+    } else if (resolveUpvalue(current.?, &name)) |upvalue_index| {
+        arg = upvalue_index;
+        get_op = .op_get_upvalue;
+        set_op = .op_set_upvalue;
     } else {
         arg = identifierConstant(allocator, &name);
         get_op = .op_get_global;
@@ -631,6 +646,43 @@ fn resolveLocal(compiler: *Compiler, name: *const Token) ?u8 {
             }
             return @intCast(u8, i);
         }
+    }
+
+    return null;
+}
+
+fn addUpvalue(compiler: *Compiler, index: u8, is_local: bool) u8 {
+    const upvalue_count = compiler.function.?.upvalue_count;
+
+    for (compiler.upvalues[0..upvalue_count]) |upvalue, i| {
+        if (upvalue.index == index and upvalue.is_local == is_local) {
+            return @intCast(u8, i);
+        }
+    }
+
+    if (upvalue_count == U8_COUNT) {
+        err("Too many closure variables in function.");
+        return 0;
+    }
+
+    compiler.upvalues[upvalue_count].is_local = is_local;
+    compiler.upvalues[upvalue_count].index = index;
+    const result = compiler.function.?.upvalue_count;
+    compiler.function.?.upvalue_count += 1;
+    return @intCast(u8, result);
+}
+
+fn resolveUpvalue(compiler: *Compiler, name: *const Token) ?u8 {
+    if (compiler.enclosing == null) return null;
+
+    const local = resolveLocal(compiler.enclosing.?, name);
+    if (local != null) {
+        return addUpvalue(compiler, local.?, true);
+    }
+
+    const upvalue = resolveUpvalue(compiler.enclosing.?, name);
+    if (upvalue != null) {
+        return addUpvalue(compiler, upvalue.?, false);
     }
 
     return null;
