@@ -3,6 +3,11 @@ const Allocator = std.mem.Allocator;
 
 const chk = @import("./chunk.zig");
 const freeChunk = chk.freeChunk;
+
+const common = @import("./common.zig");
+const DEBUG_LOG_GC = common.DEBUG_LOG_GC;
+const DEBUG_STRESS_GC = common.DEBUG_STRESS_GC;
+
 const o = @import("./object.zig");
 const Obj = o.Obj;
 const ObjClosure = o.ObjClosure;
@@ -51,6 +56,12 @@ pub fn FREE_ARRAY(allocator: Allocator, comptime T: type, slice: ?[]T, old_count
 }
 
 pub fn reallocate(allocator: Allocator, slice: ?[]u8, old_size: usize, new_size: usize) ?[]u8 {
+    if (new_size > old_size) {
+        if (DEBUG_STRESS_GC) {
+            collectGarbage();
+        }
+    }
+
     if (new_size == 0) {
         if (slice != null) allocator.free(slice.?);
         return null;
@@ -65,6 +76,11 @@ pub fn reallocate(allocator: Allocator, slice: ?[]u8, old_size: usize, new_size:
 }
 
 fn freeObject(allocator: Allocator, object: *Obj) void {
+    if (DEBUG_LOG_GC) {
+        const stdout = std.io.getStdOut().writer();
+        stdout.print("{*} free type {d}\n", .{ object, object.o_type }) catch unreachable;
+    }
+
     switch (object.o_type) {
         .closure => {
             const closure = @fieldParentPtr(ObjClosure, "obj", object);
@@ -87,6 +103,18 @@ fn freeObject(allocator: Allocator, object: *Obj) void {
         .upvalue => {
             FREE(allocator, ObjUpvalue, object);
         },
+    }
+}
+
+fn collectGarbage() void {
+    if (DEBUG_LOG_GC) {
+        const stdout = std.io.getStdOut().writer();
+        stdout.writeAll("-- gc begin\n") catch unreachable;
+    }
+
+    if (DEBUG_LOG_GC) {
+        const stdout = std.io.getStdOut().writer();
+        stdout.writeAll("-- gc end\n") catch unreachable;
     }
 }
 

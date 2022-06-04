@@ -5,6 +5,9 @@ const chk = @import("./chunk.zig");
 const Chunk = chk.Chunk;
 const initChunk = chk.initChunk;
 
+const common = @import("./common.zig");
+const DEBUG_LOG_GC = common.DEBUG_LOG_GC;
+
 const memory = @import("./memory.zig");
 const ALLOCATE = memory.ALLOCATE;
 const FREE_ARRAY = memory.FREE_ARRAY;
@@ -126,6 +129,11 @@ fn allocateObject(allocator: Allocator, size: usize, o_type: ObjType) *Obj {
 
     object.next = vm.vm.objects;
     vm.vm.objects = object;
+
+    if (DEBUG_LOG_GC) {
+        stdout.print("{*} allocate {} for {d}\n", .{ object, size, o_type }) catch unreachable;
+    }
+
     return object;
 }
 
