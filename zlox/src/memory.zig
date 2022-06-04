@@ -8,6 +8,8 @@ const common = @import("./common.zig");
 const DEBUG_LOG_GC = common.DEBUG_LOG_GC;
 const DEBUG_STRESS_GC = common.DEBUG_STRESS_GC;
 
+const markCompilerRoots = @import("./compiler.zig").markCompilerRoots;
+
 const o = @import("./object.zig");
 const Obj = o.Obj;
 const ObjClosure = o.ObjClosure;
@@ -16,8 +18,7 @@ const ObjNative = o.ObjNative;
 const ObjString = o.ObjString;
 const ObjUpvalue = o.ObjUpvalue;
 
-const table = @import("./table.zig");
-const markTable = table.markTable;
+const markTable = @import("./table.zig").markTable;
 
 const v = @import("./value.zig");
 const Value = v.Value;
@@ -137,6 +138,15 @@ fn markRoots() void {
     var slot = @ptrCast([*]Value, &vm.vm.stack);
     while (@ptrToInt(slot) < @ptrToInt(vm.vm.stack_top)) : (slot += 1) {
         markValue(slot[0]);
+    }
+
+    for (vm.vm.frames[0..vm.vm.frame_count]) |frame| {
+        markObject(&frame.closure.obj);
+    }
+
+    var upvalue = vm.vm.open_upvalues;
+    while (upvalue != null) : (upvalue = upvalue.?.next) {
+        markObject(&upvalue.?.obj);
     }
 
     markTable(&vm.vm.globals);

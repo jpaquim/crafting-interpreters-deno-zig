@@ -13,6 +13,8 @@ const U8_COUNT = common.U8_COUNT;
 const debug = @import("./debug.zig");
 const disassembleChunk = debug.disassembleChunk;
 
+const markObject = @import("./memory.zig").markObject;
+
 const object = @import("./object.zig");
 const ObjFunction = object.ObjFunction;
 const copyString = object.copyString;
@@ -796,4 +798,11 @@ pub fn compile(allocator: Allocator, source: []const u8) ?*ObjFunction {
 
     const function = endCompiler(allocator);
     return if (parser.had_error) null else function;
+}
+
+pub fn markCompilerRoots() void {
+    var compiler = current;
+    while (compiler != null) : (compiler = compiler.?.enclosing) {
+        markObject(&compiler.?.function.?.obj);
+    }
 }
