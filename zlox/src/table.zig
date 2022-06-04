@@ -5,6 +5,8 @@ const memory = @import("./memory.zig");
 const ALLOCATE = memory.ALLOCATE;
 const FREE_ARRAY = memory.FREE_ARRAY;
 const GROW_CAPACITY = memory.GROW_CAPACITY;
+const markObject = memory.markObject;
+const markValue = memory.markValue;
 
 const o = @import("./object.zig");
 const Obj = o.Obj;
@@ -140,5 +142,14 @@ pub fn tableFindString(table: *Table, chars: [*]const u8, length: usize, hash: u
         } else {
             if (IS_NIL(entry.value)) return null;
         }
+    }
+}
+
+pub fn markTable(table: *Table) void {
+    var i: usize = 0;
+    while (i < table.capacity) : (i += 1) {
+        const entry = &table.entries.?[i];
+        markObject(if (entry.key != null) &entry.key.?.obj else null);
+        markValue(entry.value);
     }
 }

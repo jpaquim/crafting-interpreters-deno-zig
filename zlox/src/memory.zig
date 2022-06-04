@@ -15,6 +15,17 @@ const ObjFunction = o.ObjFunction;
 const ObjNative = o.ObjNative;
 const ObjString = o.ObjString;
 const ObjUpvalue = o.ObjUpvalue;
+
+const table = @import("./table.zig");
+const markTable = table.markTable;
+
+const v = @import("./value.zig");
+const Value = v.Value;
+const AS_OBJ = v.AS_OBJ;
+const IS_OBJ = v.IS_OBJ;
+const OBJ_VAL = v.OBJ_VAL;
+const printValue = v.printValue;
+
 const vm = @import("./vm.zig");
 
 pub fn ALLOCATE(allocator: Allocator, comptime T: type, count: usize) ?[]T {
@@ -75,6 +86,22 @@ pub fn reallocate(allocator: Allocator, slice: ?[]u8, old_size: usize, new_size:
     return result;
 }
 
+pub fn markObject(object: ?*Obj) void {
+    if (object == null) return;
+    if (DEBUG_LOG_GC) {
+        const stdout = std.io.getStdOut().writer();
+        stdout.print("{*} mark ", .{object.?}) catch unreachable;
+        printValue(OBJ_VAL(object.?)) catch unreachable;
+        stdout.writeByte('\n') catch unreachable;
+    }
+
+    object.?.is_marked = true;
+}
+
+pub fn markValue(value: Value) void {
+    if (IS_OBJ(value)) markObject(AS_OBJ(value));
+}
+
 fn freeObject(allocator: Allocator, object: *Obj) void {
     if (DEBUG_LOG_GC) {
         const stdout = std.io.getStdOut().writer();
@@ -106,11 +133,22 @@ fn freeObject(allocator: Allocator, object: *Obj) void {
     }
 }
 
+fn markRoots() void {
+    var slot = @ptrCast([*]Value, &vm.vm.stack);
+    while (@ptrToInt(slot) < @ptrToInt(vm.vm.stack_top)) : (slot += 1) {
+        markValue(slot[0]);
+    }
+
+    markTable(&vm.vm.globals);
+}
+
 fn collectGarbage() void {
     if (DEBUG_LOG_GC) {
         const stdout = std.io.getStdOut().writer();
         stdout.writeAll("-- gc begin\n") catch unreachable;
     }
+
+    markRoots();
 
     if (DEBUG_LOG_GC) {
         const stdout = std.io.getStdOut().writer();

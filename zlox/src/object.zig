@@ -35,6 +35,7 @@ const ObjType = enum {
 
 pub const Obj = struct {
     o_type: ObjType,
+    is_marked: bool,
     next: ?*Obj,
 };
 
@@ -126,6 +127,7 @@ fn allocateObject(allocator: Allocator, size: usize, o_type: ObjType) *Obj {
         size,
     ).?));
     object.o_type = o_type;
+    object.is_marked = false;
 
     object.next = vm.vm.objects;
     vm.vm.objects = object;
