@@ -22,8 +22,11 @@ const Value = v.Value;
 const AS_OBJ = v.AS_OBJ;
 const IS_OBJ = v.IS_OBJ;
 const NIL_VAL = v.NIL_VAL;
+const OBJ_VAL = v.OBJ_VAL;
 
 const vm = @import("./vm.zig");
+const push = vm.push;
+const pop = vm.pop;
 
 const ObjType = enum {
     closure,
@@ -173,7 +176,11 @@ fn allocateString(allocator: Allocator, chars: [*]u8, length: usize, hash: u32) 
     string.length = length;
     string.chars = chars;
     string.hash = hash;
+
+    push(OBJ_VAL(&string.obj));
     _ = tableSet(allocator, &vm.vm.strings, string, NIL_VAL);
+    _ = pop();
+
     return string;
 }
 

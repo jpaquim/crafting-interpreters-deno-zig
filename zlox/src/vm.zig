@@ -386,12 +386,12 @@ pub fn interpret(allocator: Allocator, source: []const u8) !InterpretResult {
     return run(allocator);
 }
 
-fn push(value: Value) void {
+pub fn push(value: Value) void {
     vm.stack_top[0] = value;
     vm.stack_top += 1;
 }
 
-fn pop() Value {
+pub fn pop() Value {
     vm.stack_top -= 1;
     return vm.stack_top[0];
 }
@@ -476,8 +476,8 @@ fn isFalsey(value: Value) bool {
 }
 
 fn concatenate(allocator: Allocator) void {
-    const b = AS_STRING(pop());
-    const a = AS_STRING(pop());
+    const b = AS_STRING(peek(0));
+    const a = AS_STRING(peek(1));
 
     const length = a.length + b.length;
     const chars = ALLOCATE(allocator, u8, length).?;
@@ -485,5 +485,7 @@ fn concatenate(allocator: Allocator) void {
     std.mem.copy(u8, chars[a.length..], b.chars[0..b.length]);
 
     const result = takeString(allocator, chars.ptr, length);
+    _ = pop();
+    _ = pop();
     push(OBJ_VAL(&result.obj));
 }

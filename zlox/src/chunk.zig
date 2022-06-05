@@ -1,15 +1,21 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
+
 const memory = @import("./memory.zig");
 const FREE_ARRAY = memory.FREE_ARRAY;
 const GROW_ARRAY = memory.GROW_ARRAY;
 const GROW_CAPACITY = memory.GROW_CAPACITY;
+
 const v = @import("./value.zig");
 const Value = v.Value;
 const ValueArray = v.ValueArray;
 const freeValueArray = v.freeValueArray;
 const initValueArray = v.initValueArray;
 const writeValueArray = v.writeValueArray;
+
+const vm = @import("vm.zig");
+const pop = vm.pop;
+const push = vm.push;
 
 pub const OpCode = enum(u8) {
     op_constant,
@@ -80,6 +86,8 @@ pub fn writeChunk(allocator: Allocator, chunk: *Chunk, byte: u8, line: usize) vo
 }
 
 pub fn addConstant(allocator: Allocator, chunk: *Chunk, value: Value) usize {
+    push(value);
     writeValueArray(allocator, &chunk.constants, value);
+    _ = pop();
     return chunk.constants.count - 1;
 }
