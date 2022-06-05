@@ -22,6 +22,7 @@ const ObjFunction = o.ObjFunction;
 const ObjString = o.ObjString;
 const ObjUpvalue = o.ObjUpvalue;
 const copyString = o.copyString;
+const newClass = o.newClass;
 const newClosure = o.newClosure;
 const newNative = o.newNative;
 const newUpvalue = o.newUpvalue;
@@ -337,6 +338,9 @@ fn run(allocator: Allocator) !InterpretResult {
                     return .runtime_error;
                 }
                 frame = &vm.frames[vm.frame_count - 1];
+            },
+            .op_class => {
+                push(OBJ_VAL(&newClass(allocator, READ_STRING(frame)).obj));
             },
             .op_closure => {
                 const function = AS_FUNCTION(READ_CONSTANT(frame));

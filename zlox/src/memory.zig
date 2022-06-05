@@ -12,6 +12,7 @@ const markCompilerRoots = @import("./compiler.zig").markCompilerRoots;
 
 const o = @import("./object.zig");
 const Obj = o.Obj;
+const ObjClass = o.ObjClass;
 const ObjClosure = o.ObjClosure;
 const ObjFunction = o.ObjFunction;
 const ObjNative = o.ObjNative;
@@ -140,6 +141,10 @@ fn blackenObject(allocator: Allocator, object: *Obj) void {
     }
 
     switch (object.o_type) {
+        .class => {
+            const klass = @fieldParentPtr(ObjClass, "obj", object);
+            markObject(allocator, &klass.name.obj);
+        },
         .closure => {
             const closure = @fieldParentPtr(ObjClosure, "obj", object);
             markObject(allocator, &closure.function.obj);
@@ -167,6 +172,9 @@ fn freeObject(allocator: Allocator, object: *Obj) void {
     }
 
     switch (object.o_type) {
+        .class => {
+            FREE(allocator, ObjClass, object);
+        },
         .closure => {
             const closure = @fieldParentPtr(ObjClosure, "obj", object);
             FREE_ARRAY(allocator, ?*ObjUpvalue, if (closure.upvalues == null) null else closure.upvalues.?[0..closure.upvalue_count], closure.upvalue_count);

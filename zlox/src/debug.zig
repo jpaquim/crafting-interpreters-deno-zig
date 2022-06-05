@@ -53,6 +53,7 @@ pub fn disassembleInstruction(chunk: *Chunk, offset: usize) !usize {
         .op_jump_if_false => return jumpInstruction("OP_JUMP_IF_FALSE", 1, chunk, offset),
         .op_loop => return jumpInstruction("OP_LOOP", -1, chunk, offset),
         .op_call => return byteInstruction("OP_CALL", chunk, offset),
+        .op_class => return constantInstruction("OP_CLASS", chunk, offset),
         .op_closure => {
             var offset_ = offset + 1;
             const constant = chunk.code.?.ptr[offset_];

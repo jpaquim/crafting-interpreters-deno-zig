@@ -341,6 +341,18 @@ fn function_(allocator: Allocator, f_type: FunctionType) void {
     }
 }
 
+fn classDeclaration(allocator: Allocator) void {
+    consume(.IDENTIFIER, "Expect class name.");
+    const name_constant = identifierConstant(allocator, &parser.previous);
+    declareVariable();
+
+    emitBytes(allocator, @enumToInt(OpCode.op_class), name_constant);
+    defineVariable(allocator, name_constant);
+
+    consume(.LEFT_BRACE, "Expect '{' before class body.");
+    consume(.RIGHT_BRACE, "Expect '}' after class body.");
+}
+
 fn funDeclaration(allocator: Allocator) void {
     const global = parseVariable(allocator, "Expect function name.");
     markInitialized();
@@ -477,7 +489,9 @@ fn synchronize() void {
 }
 
 fn declaration(allocator: Allocator) void {
-    if (match(.FUN)) {
+    if (match(.CLASS)) {
+        classDeclaration(allocator);
+    } else if (match(.FUN)) {
         funDeclaration(allocator);
     } else if (match(.VAR)) {
         varDeclaration(allocator);

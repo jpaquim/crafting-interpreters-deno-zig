@@ -29,6 +29,7 @@ const push = vm.push;
 const pop = vm.pop;
 
 const ObjType = enum {
+    class,
     closure,
     function,
     native,
@@ -78,8 +79,17 @@ pub const ObjClosure = struct {
     upvalue_count: usize,
 };
 
+pub const ObjClass = struct {
+    obj: Obj,
+    name: *ObjString,
+};
+
 pub fn OBJ_TYPE(value: Value) ObjType {
     return AS_OBJ(value).o_type;
+}
+
+pub fn IS_CLASS(value: Value) bool {
+    return isObjType(value, .class);
 }
 
 pub fn IS_CLOSURE(value: Value) bool {
@@ -96,6 +106,10 @@ pub fn IS_NATIVE(value: Value) bool {
 
 pub fn IS_STRING(value: Value) bool {
     return isObjType(value, .string);
+}
+
+pub fn AS_CLASS(value: Value) *ObjClass {
+    return @fieldParentPtr(ObjClass, "obj", AS_OBJ(value));
 }
 
 pub fn AS_CLOSURE(value: Value) *ObjClosure {
@@ -140,6 +154,12 @@ fn allocateObject(allocator: Allocator, size: usize, o_type: ObjType) *Obj {
     }
 
     return object;
+}
+
+pub fn newClass(allocator: Allocator, name: *ObjString) *ObjClass {
+    const klass = ALLOCATE_OBJ(allocator, ObjClass, .class);
+    klass.name = name;
+    return klass;
 }
 
 pub fn newClosure(allocator: Allocator, function: *ObjFunction) *ObjClosure {
@@ -235,6 +255,10 @@ fn printFunction(function: *ObjFunction) !void {
 
 pub fn printObject(value: Value) !void {
     switch (OBJ_TYPE(value)) {
+        .class => {
+            const name = AS_CLASS(value).name;
+            try stdout.writeAll(name.chars[0..name.length]);
+        },
         .closure => try printFunction(AS_CLOSURE(value).function),
         .function => try printFunction(AS_FUNCTION(value)),
         .native => try stdout.writeAll("<native fn>"),
