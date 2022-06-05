@@ -76,6 +76,7 @@ const Upvalue = struct {
 
 const FunctionType = enum {
     function,
+    initializer,
     method,
     script,
 };
@@ -183,7 +184,12 @@ fn emitJump(allocator: Allocator, instruction: u8) usize {
 }
 
 fn emitReturn(allocator: Allocator) void {
-    emitByte(allocator, @enumToInt(OpCode.op_nil));
+    if (current.?.f_type == .initializer) {
+        emitBytes(allocator, @enumToInt(OpCode.op_get_local), 0);
+    } else {
+        emitByte(allocator, @enumToInt(OpCode.op_nil));
+    }
+
     emitByte(allocator, @enumToInt(OpCode.op_return));
 }
 
@@ -368,7 +374,11 @@ fn method(allocator: Allocator) void {
     consume(.IDENTIFIER, "Expect method name.");
     const constant = identifierConstant(allocator, &parser.previous);
 
-    const f_type = FunctionType.method;
+    var f_type = FunctionType.method;
+    if (parser.previous.length == 4 and std.mem.eql(u8, parser.previous.start[0..parser.previous.length], "init")) {
+        f_type = .initializer;
+    }
+
     function_(allocator, f_type);
     emitBytes(allocator, @enumToInt(OpCode.op_method), constant);
 }

@@ -81,6 +81,7 @@ pub const VM = struct {
     stack_top: [*]Value,
     globals: Table,
     strings: Table,
+    init_string: ?*ObjString,
     open_upvalues: ?*ObjUpvalue,
 
     bytes_allocated: usize,
@@ -157,13 +158,16 @@ pub fn initVM(allocator: Allocator) void {
     initTable(&vm.globals);
     initTable(&vm.strings);
 
-    _ = allocator;
+    vm.init_string = null;
+    vm.init_string = copyString(allocator, "init", 4);
+
     defineNative(allocator, "clock", clockNative);
 }
 
 pub fn freeVM(allocator: Allocator) void {
     freeTable(allocator, &vm.globals);
     freeTable(allocator, &vm.strings);
+    vm.init_string = null;
     freeObjects(allocator);
 }
 
@@ -476,6 +480,13 @@ fn callValue(allocator: Allocator, callee: Value, arg_count: u8) bool {
                 const klass = AS_CLASS(callee);
                 const stack_pos = vm.stack_top - arg_count - 1;
                 stack_pos[0] = OBJ_VAL(&newInstance(allocator, klass).obj);
+                var initializer: Value = undefined;
+                if (tableGet(&klass.methods, vm.init_string.?, &initializer)) {
+                    return call(AS_CLOSURE(initializer), arg_count);
+                } else if (arg_count != 0) {
+                    runtimeError("Expected 0 arguments but got {d}.", .{arg_count});
+                    return false;
+                }
                 return true;
             },
             .closure => {

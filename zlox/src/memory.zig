@@ -241,6 +241,7 @@ fn markRoots(allocator: Allocator) void {
     markTable(allocator, &vm.vm.globals);
 
     markCompilerRoots(allocator);
+    markObject(allocator, if (vm.vm.init_string) |init_string| &init_string.obj else null);
 }
 
 fn traceReferences(allocator: Allocator) void {
