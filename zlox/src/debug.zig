@@ -39,6 +39,8 @@ pub fn disassembleInstruction(chunk: *Chunk, offset: usize) !usize {
         .op_set_global => return constantInstruction("OP_SET_GLOBAL", chunk, offset),
         .op_get_upvalue => return byteInstruction("OP_GET_UPVALUE", chunk, offset),
         .op_set_upvalue => return byteInstruction("OP_SET_UPVALUE", chunk, offset),
+        .op_get_property => return constantInstruction("OP_GET_PROPERTY", chunk, offset),
+        .op_set_property => return constantInstruction("OP_SET_PROPERTY", chunk, offset),
         .op_equal => return simpleInstruction("OP_EQUAL", offset),
         .op_greater => return simpleInstruction("OP_GREATER", offset),
         .op_less => return simpleInstruction("OP_LESS", offset),

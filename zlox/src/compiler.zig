@@ -285,6 +285,18 @@ fn call(allocator: Allocator, _: bool) void {
     emitBytes(allocator, @enumToInt(OpCode.op_call), arg_count);
 }
 
+fn dot(allocator: Allocator, can_assign: bool) void {
+    consume(.IDENTIFIER, "Expect property name after '.'.");
+    const name = identifierConstant(allocator, &parser.previous);
+
+    if (can_assign and match(.EQUAL)) {
+        expression(allocator);
+        emitBytes(allocator, @enumToInt(OpCode.op_set_property), name);
+    } else {
+        emitBytes(allocator, @enumToInt(OpCode.op_get_property), name);
+    }
+}
+
 fn literal(allocator: Allocator, _: bool) void {
     switch (parser.previous.t_type) {
         .FALSE => emitByte(allocator, @enumToInt(OpCode.op_false)),
@@ -589,7 +601,7 @@ const rules = [_]ParseRule{
     .{ .precedence = .NONE }, // LEFT_BRACE
     .{ .precedence = .NONE }, // RIGHT_BRACE
     .{ .precedence = .NONE }, // COMMA
-    .{ .precedence = .NONE }, // DOT
+    .{ .infix = dot, .precedence = .CALL }, // DOT
     .{ .prefix = unary, .infix = binary, .precedence = .TERM }, // MINUS
     .{ .infix = binary, .precedence = .TERM }, // PLUS
     .{ .precedence = .NONE }, // SEMICOLON

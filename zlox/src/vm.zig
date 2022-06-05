@@ -31,8 +31,10 @@ const takeString = o.takeString;
 const AS_CLASS = o.AS_CLASS;
 const AS_CLOSURE = o.AS_CLOSURE;
 const AS_FUNCTION = o.AS_FUNCTION;
+const AS_INSTANCE = o.AS_INSTANCE;
 const AS_NATIVE = o.AS_NATIVE;
 const AS_STRING = o.AS_STRING;
+const IS_INSTANCE = o.IS_INSTANCE;
 const IS_STRING = o.IS_STRING;
 const OBJ_TYPE = o.OBJ_TYPE;
 
@@ -247,6 +249,36 @@ fn run(allocator: Allocator) !InterpretResult {
             .op_set_upvalue => {
                 const slot = READ_BYTE(frame);
                 frame.closure.upvalues.?[slot].?.location.* = peek(0);
+            },
+            .op_get_property => {
+                if (!IS_INSTANCE(peek(0))) {
+                    runtimeError("Only instances have properties.", .{});
+                    return .runtime_error;
+                }
+
+                const instance = AS_INSTANCE(peek(0));
+                const name = READ_STRING(frame);
+
+                var value: Value = undefined;
+                if (tableGet(&instance.fields, name, &value)) {
+                    _ = pop();
+                    push(value);
+                } else {
+                    runtimeError("Undefined property '{s}'.", .{name.chars[0..name.length]});
+                    return .runtime_error;
+                }
+            },
+            .op_set_property => {
+                if (!IS_INSTANCE(peek(1))) {
+                    runtimeError("Only instances have fields.", .{});
+                    return .runtime_error;
+                }
+
+                const instance = AS_INSTANCE(peek(1));
+                _ = tableSet(allocator, &instance.fields, READ_STRING(frame), peek(0));
+                const value = pop();
+                _ = pop();
+                push(value);
             },
             .op_equal => {
                 const b = pop();
