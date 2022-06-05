@@ -75,6 +75,9 @@ pub const VM = struct {
     strings: Table,
     open_upvalues: ?*ObjUpvalue,
     objects: ?*Obj,
+    gray_count: usize,
+    gray_capacity: usize,
+    gray_stack: ?[]*Obj,
 };
 
 const InterpretResult = enum {
@@ -133,6 +136,11 @@ fn defineNative(allocator: Allocator, name: []const u8, function: NativeFn) void
 pub fn initVM(allocator: Allocator) void {
     resetStack();
     vm.objects = null;
+
+    vm.gray_count = 0;
+    vm.gray_capacity = 0;
+    vm.gray_stack = null;
+
     initTable(&vm.globals);
     initTable(&vm.strings);
 

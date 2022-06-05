@@ -145,11 +145,21 @@ pub fn tableFindString(table: *Table, chars: [*]const u8, length: usize, hash: u
     }
 }
 
-pub fn markTable(table: *Table) void {
+pub fn tableRemoveWhite(table: *Table) void {
+    var i: usize = 0;
+    while (i < table.capacity) {
+        const entry = &table.entries.?[i];
+        if (entry.key != null and !entry.key.?.obj.is_marked) {
+            _ = tableDelete(table, entry.key.?);
+        }
+    }
+}
+
+pub fn markTable(allocator: Allocator, table: *Table) void {
     var i: usize = 0;
     while (i < table.capacity) : (i += 1) {
         const entry = &table.entries.?[i];
-        markObject(if (entry.key != null) &entry.key.?.obj else null);
-        markValue(entry.value);
+        markObject(allocator, if (entry.key != null) &entry.key.?.obj else null);
+        markValue(allocator, entry.value);
     }
 }

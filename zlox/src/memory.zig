@@ -18,10 +18,13 @@ const ObjNative = o.ObjNative;
 const ObjString = o.ObjString;
 const ObjUpvalue = o.ObjUpvalue;
 
-const markTable = @import("./table.zig").markTable;
+const table = @import("./table.zig");
+const markTable = table.markTable;
+const tableRemoveWhite = table.tableRemoveWhite;
 
 const v = @import("./value.zig");
 const Value = v.Value;
+const ValueArray = v.ValueArray;
 const AS_OBJ = v.AS_OBJ;
 const IS_OBJ = v.IS_OBJ;
 const OBJ_VAL = v.OBJ_VAL;
@@ -70,7 +73,7 @@ pub fn FREE_ARRAY(allocator: Allocator, comptime T: type, slice: ?[]T, old_count
 pub fn reallocate(allocator: Allocator, slice: ?[]u8, old_size: usize, new_size: usize) ?[]u8 {
     if (new_size > old_size) {
         if (DEBUG_STRESS_GC) {
-            collectGarbage();
+            collectGarbage(allocator);
         }
     }
 
@@ -87,20 +90,66 @@ pub fn reallocate(allocator: Allocator, slice: ?[]u8, old_size: usize, new_size:
     return result;
 }
 
-pub fn markObject(object: ?*Obj) void {
-    if (object == null) return;
+pub fn markObject(allocator: Allocator, object_: ?*Obj) void {
+    if (object_ == null) return;
+    const object = object_.?;
+    if (object.is_marked) return;
+
     if (DEBUG_LOG_GC) {
         const stdout = std.io.getStdOut().writer();
-        stdout.print("{*} mark ", .{object.?}) catch unreachable;
-        printValue(OBJ_VAL(object.?)) catch unreachable;
+        stdout.print("{*} mark ", .{object}) catch unreachable;
+        printValue(OBJ_VAL(object)) catch unreachable;
         stdout.writeByte('\n') catch unreachable;
     }
 
-    object.?.is_marked = true;
+    object.is_marked = true;
+
+    if (vm.vm.gray_capacity < vm.vm.gray_count + 1) {
+        vm.vm.gray_capacity = GROW_CAPACITY(vm.vm.gray_capacity);
+        vm.vm.gray_stack = (if (vm.vm.gray_stack) |gray_stack| allocator.realloc(gray_stack, vm.vm.gray_capacity) else allocator.alloc(*Obj, vm.vm.gray_capacity)) catch std.process.exit(1);
+    }
+
+    vm.vm.gray_stack.?[vm.vm.gray_count] = object;
+    vm.vm.gray_count += 1;
 }
 
-pub fn markValue(value: Value) void {
-    if (IS_OBJ(value)) markObject(AS_OBJ(value));
+pub fn markValue(allocator: Allocator, value: Value) void {
+    if (IS_OBJ(value)) markObject(allocator, AS_OBJ(value));
+}
+
+fn markArray(allocator: Allocator, array: *ValueArray) void {
+    for (array.values.?[0..array.count]) |value| {
+        markValue(allocator, value);
+    }
+}
+
+fn blackenObject(allocator: Allocator, object: *Obj) void {
+    if (DEBUG_LOG_GC) {
+        const stdout = std.io.getStdOut().writer();
+        stdout.print("{*} blacken ", .{object}) catch unreachable;
+        printValue(OBJ_VAL(object)) catch unreachable;
+        stdout.writeByte('\n') catch unreachable;
+    }
+
+    switch (object.o_type) {
+        .closure => {
+            const closure = @fieldParentPtr(ObjClosure, "obj", object);
+            markObject(allocator, &closure.function.obj);
+            var i: usize = 0;
+            while (i < closure.upvalue_count) : (i += 1) {
+                markObject(allocator, &closure.upvalues.?[i].?.obj);
+            }
+        },
+        .function => {
+            const function = @fieldParentPtr(ObjFunction, "obj", object);
+            markObject(allocator, &function.name.?.obj);
+            markArray(allocator, &function.chunk.constants);
+        },
+        .upvalue => {
+            markValue(allocator, @fieldParentPtr(ObjUpvalue, "obj", object).closed);
+        },
+        .native, .string => {},
+    }
 }
 
 fn freeObject(allocator: Allocator, object: *Obj) void {
@@ -134,31 +183,64 @@ fn freeObject(allocator: Allocator, object: *Obj) void {
     }
 }
 
-fn markRoots() void {
+fn markRoots(allocator: Allocator) void {
     var slot = @ptrCast([*]Value, &vm.vm.stack);
     while (@ptrToInt(slot) < @ptrToInt(vm.vm.stack_top)) : (slot += 1) {
-        markValue(slot[0]);
+        markValue(allocator, slot[0]);
     }
 
     for (vm.vm.frames[0..vm.vm.frame_count]) |frame| {
-        markObject(&frame.closure.obj);
+        markObject(allocator, &frame.closure.obj);
     }
 
     var upvalue = vm.vm.open_upvalues;
     while (upvalue != null) : (upvalue = upvalue.?.next) {
-        markObject(&upvalue.?.obj);
+        markObject(allocator, &upvalue.?.obj);
     }
 
-    markTable(&vm.vm.globals);
+    markTable(allocator, &vm.vm.globals);
 }
 
-fn collectGarbage() void {
+fn traceReferences(allocator: Allocator) void {
+    while (vm.vm.gray_count > 0) {
+        vm.vm.gray_count -= 1;
+        const object = vm.vm.gray_stack.?[vm.vm.gray_count];
+        blackenObject(allocator, object);
+    }
+}
+
+fn sweep(allocator: Allocator) void {
+    var previous: ?*Obj = null;
+    var object_ = vm.vm.objects;
+    while (object_) |object| {
+        if (object.is_marked) {
+            object.is_marked = false;
+            previous = object;
+            object_ = object.next;
+        } else {
+            const unreached = object;
+            object_ = object.next;
+            if (previous != null) {
+                previous.?.next = object;
+            } else {
+                vm.vm.objects = object;
+            }
+
+            freeObject(allocator, unreached);
+        }
+    }
+}
+
+fn collectGarbage(allocator: Allocator) void {
     if (DEBUG_LOG_GC) {
         const stdout = std.io.getStdOut().writer();
         stdout.writeAll("-- gc begin\n") catch unreachable;
     }
 
-    markRoots();
+    markRoots(allocator);
+    traceReferences(allocator);
+    tableRemoveWhite(&vm.vm.strings);
+    sweep(allocator);
 
     if (DEBUG_LOG_GC) {
         const stdout = std.io.getStdOut().writer();
@@ -172,5 +254,9 @@ pub fn freeObjects(allocator: Allocator) void {
         const next = obj.next;
         freeObject(allocator, obj);
         object = next;
+    }
+
+    if (vm.vm.gray_stack) |gray_stack| {
+        allocator.free(gray_stack);
     }
 }
