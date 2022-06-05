@@ -17,17 +17,20 @@ const freeObjects = memory.freeObjects;
 const o = @import("./object.zig");
 const NativeFn = o.NativeFn;
 const Obj = o.Obj;
+const ObjClass = o.ObjClass;
 const ObjClosure = o.ObjClosure;
 const ObjFunction = o.ObjFunction;
 const ObjString = o.ObjString;
 const ObjUpvalue = o.ObjUpvalue;
 const copyString = o.copyString;
+const newBoundMethod = o.newBoundMethod;
 const newClass = o.newClass;
 const newClosure = o.newClosure;
 const newInstance = o.newInstance;
 const newNative = o.newNative;
 const newUpvalue = o.newUpvalue;
 const takeString = o.takeString;
+const AS_BOUND_METHOD = o.AS_BOUND_METHOD;
 const AS_CLASS = o.AS_CLASS;
 const AS_CLOSURE = o.AS_CLOSURE;
 const AS_FUNCTION = o.AS_FUNCTION;
@@ -263,8 +266,7 @@ fn run(allocator: Allocator) !InterpretResult {
                 if (tableGet(&instance.fields, name, &value)) {
                     _ = pop();
                     push(value);
-                } else {
-                    runtimeError("Undefined property '{s}'.", .{name.chars[0..name.length]});
+                } else if (!bindMethod(allocator, instance.klass, name)) {
                     return .runtime_error;
                 }
             },
@@ -376,6 +378,9 @@ fn run(allocator: Allocator) !InterpretResult {
             .op_class => {
                 push(OBJ_VAL(&newClass(allocator, READ_STRING(frame)).obj));
             },
+            .op_method => {
+                defineMethod(allocator, READ_STRING(frame));
+            },
             .op_closure => {
                 const function = AS_FUNCTION(READ_CONSTANT(frame));
                 const closure = newClosure(allocator, function);
@@ -461,6 +466,10 @@ fn call(closure: *ObjClosure, arg_count: u8) bool {
 fn callValue(allocator: Allocator, callee: Value, arg_count: u8) bool {
     if (IS_OBJ(callee)) {
         switch (OBJ_TYPE(callee)) {
+            .bound_method => {
+                const bound = AS_BOUND_METHOD(callee);
+                return call(bound.method, arg_count);
+            },
             .class => {
                 const klass = AS_CLASS(callee);
                 const stack_pos = vm.stack_top - arg_count - 1;
@@ -482,6 +491,19 @@ fn callValue(allocator: Allocator, callee: Value, arg_count: u8) bool {
     }
     runtimeError("Can only call functions and classes.", .{});
     return false;
+}
+
+fn bindMethod(allocator: Allocator, klass: *ObjClass, name: *ObjString) bool {
+    var method: Value = undefined;
+    if (!tableGet(&klass.methods, name, &method)) {
+        runtimeError("Undefined property '{s}'.", .{name.chars[0..name.length]});
+        return false;
+    }
+
+    const bound = newBoundMethod(allocator, peek(0), AS_CLOSURE(method));
+    _ = pop();
+    push(OBJ_VAL(&bound.obj));
+    return true;
 }
 
 fn captureUpvalue(allocator: Allocator, local: *Value) *ObjUpvalue {
@@ -513,6 +535,13 @@ fn closeUpvalues(last_: *Value) void {
         upvalue.location = &upvalue.closed;
         vm.open_upvalues = upvalue.next;
     }
+}
+
+fn defineMethod(allocator: Allocator, name: *ObjString) void {
+    const method = peek(0);
+    const klass = AS_CLASS(peek(1));
+    _ = tableSet(allocator, &klass.methods, name, method);
+    _ = pop();
 }
 
 fn isFalsey(value: Value) bool {

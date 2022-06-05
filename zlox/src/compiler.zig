@@ -353,16 +353,31 @@ fn function_(allocator: Allocator, f_type: FunctionType) void {
     }
 }
 
+fn method(allocator: Allocator) void {
+    consume(.IDENTIFIER, "Expect method name.");
+    const constant = identifierConstant(allocator, &parser.previous);
+
+    const f_type = FunctionType.function;
+    function_(allocator, f_type);
+    emitBytes(allocator, @enumToInt(OpCode.op_method), constant);
+}
+
 fn classDeclaration(allocator: Allocator) void {
     consume(.IDENTIFIER, "Expect class name.");
+    const class_name = parser.previous;
     const name_constant = identifierConstant(allocator, &parser.previous);
     declareVariable();
 
     emitBytes(allocator, @enumToInt(OpCode.op_class), name_constant);
     defineVariable(allocator, name_constant);
 
+    namedVariable(allocator, class_name, false);
     consume(.LEFT_BRACE, "Expect '{' before class body.");
+    while (!check(.RIGHT_BRACE) and !check(.EOF)) {
+        method(allocator);
+    }
     consume(.RIGHT_BRACE, "Expect '}' after class body.");
+    emitByte(allocator, @enumToInt(OpCode.op_pop));
 }
 
 fn funDeclaration(allocator: Allocator) void {

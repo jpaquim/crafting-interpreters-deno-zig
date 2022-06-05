@@ -47,6 +47,7 @@ pub const OpCode = enum(u8) {
     op_loop,
     op_call,
     op_class,
+    op_method,
     op_closure,
     op_close_upvalue,
     op_return,

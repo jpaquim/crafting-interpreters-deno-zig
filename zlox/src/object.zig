@@ -31,6 +31,7 @@ const push = vm.push;
 const pop = vm.pop;
 
 const ObjType = enum {
+    bound_method,
     class,
     closure,
     function,
@@ -85,6 +86,7 @@ pub const ObjClosure = struct {
 pub const ObjClass = struct {
     obj: Obj,
     name: *ObjString,
+    methods: Table,
 };
 
 pub const ObjInstance = struct {
@@ -93,8 +95,18 @@ pub const ObjInstance = struct {
     fields: Table,
 };
 
+pub const ObjBoundMethod = struct {
+    obj: Obj,
+    receiver: Value,
+    method: *ObjClosure,
+};
+
 pub fn OBJ_TYPE(value: Value) ObjType {
     return AS_OBJ(value).o_type;
+}
+
+pub fn IS_BOUND_METHOD(value: Value) bool {
+    return isObjType(value, .bound_method);
 }
 
 pub fn IS_CLASS(value: Value) bool {
@@ -119,6 +131,10 @@ pub fn IS_NATIVE(value: Value) bool {
 
 pub fn IS_STRING(value: Value) bool {
     return isObjType(value, .string);
+}
+
+pub fn AS_BOUND_METHOD(value: Value) *ObjBoundMethod {
+    return @fieldParentPtr(ObjBoundMethod, "obj", AS_OBJ(value));
 }
 
 pub fn AS_CLASS(value: Value) *ObjClass {
@@ -173,9 +189,17 @@ fn allocateObject(allocator: Allocator, size: usize, o_type: ObjType) *Obj {
     return object;
 }
 
+pub fn newBoundMethod(allocator: Allocator, receiver: Value, method: *ObjClosure) *ObjBoundMethod {
+    const bound = ALLOCATE_OBJ(allocator, ObjBoundMethod, .bound_method);
+    bound.receiver = receiver;
+    bound.method = method;
+    return bound;
+}
+
 pub fn newClass(allocator: Allocator, name: *ObjString) *ObjClass {
     const klass = ALLOCATE_OBJ(allocator, ObjClass, .class);
     klass.name = name;
+    initTable(&klass.methods);
     return klass;
 }
 
@@ -279,6 +303,7 @@ fn printFunction(function: *ObjFunction) !void {
 
 pub fn printObject(value: Value) !void {
     switch (OBJ_TYPE(value)) {
+        .bound_method => try printFunction(AS_BOUND_METHOD(value).method.function),
         .class => {
             const name = AS_CLASS(value).name;
             try stdout.writeAll(name.chars[0..name.length]);

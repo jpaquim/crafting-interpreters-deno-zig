@@ -12,6 +12,7 @@ const markCompilerRoots = @import("./compiler.zig").markCompilerRoots;
 
 const o = @import("./object.zig");
 const Obj = o.Obj;
+const ObjBoundMethod = o.ObjBoundMethod;
 const ObjClass = o.ObjClass;
 const ObjClosure = o.ObjClosure;
 const ObjFunction = o.ObjFunction;
@@ -143,9 +144,15 @@ fn blackenObject(allocator: Allocator, object: *Obj) void {
     }
 
     switch (object.o_type) {
+        .bound_method => {
+            const bound = @fieldParentPtr(ObjBoundMethod, "obj", object);
+            markValue(allocator, bound.receiver);
+            markObject(allocator, &bound.obj);
+        },
         .class => {
             const klass = @fieldParentPtr(ObjClass, "obj", object);
             markObject(allocator, &klass.name.obj);
+            markTable(allocator, &klass.methods);
         },
         .closure => {
             const closure = @fieldParentPtr(ObjClosure, "obj", object);
@@ -179,7 +186,12 @@ fn freeObject(allocator: Allocator, object: *Obj) void {
     }
 
     switch (object.o_type) {
+        .bound_method => {
+            FREE(allocator, ObjBoundMethod, object);
+        },
         .class => {
+            const klass = @fieldParentPtr(ObjClass, "obj", object);
+            freeTable(allocator, &klass.methods);
             FREE(allocator, ObjClass, object);
         },
         .closure => {
