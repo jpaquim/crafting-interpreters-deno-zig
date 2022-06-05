@@ -468,6 +468,8 @@ fn callValue(allocator: Allocator, callee: Value, arg_count: u8) bool {
         switch (OBJ_TYPE(callee)) {
             .bound_method => {
                 const bound = AS_BOUND_METHOD(callee);
+                const stack_pos = vm.stack_top - arg_count - 1;
+                stack_pos[0] = bound.receiver;
                 return call(bound.method, arg_count);
             },
             .class => {

@@ -76,6 +76,7 @@ const Upvalue = struct {
 
 const FunctionType = enum {
     function,
+    method,
     script,
 };
 
@@ -90,8 +91,13 @@ const Compiler = struct {
     scope_depth: i32,
 };
 
+const ClassCompiler = struct {
+    enclosing: ?*ClassCompiler,
+};
+
 var parser: Parser = undefined;
 var current: ?*Compiler = null;
+var current_class: ?*ClassCompiler = null;
 
 fn currentChunk() *Chunk {
     return &current.?.function.?.chunk;
@@ -222,8 +228,13 @@ fn initCompiler(allocator: Allocator, compiler: *Compiler, f_type: FunctionType)
     current.?.local_count += 1;
     local.depth = 0;
     local.is_captured = false;
-    local.name.start = "";
-    local.name.length = 0;
+    if (f_type != .function) {
+        local.name.start = "this";
+        local.name.length = 4;
+    } else {
+        local.name.start = "";
+        local.name.length = 0;
+    }
 }
 
 fn endCompiler(allocator: Allocator) *ObjFunction {
@@ -357,7 +368,7 @@ fn method(allocator: Allocator) void {
     consume(.IDENTIFIER, "Expect method name.");
     const constant = identifierConstant(allocator, &parser.previous);
 
-    const f_type = FunctionType.function;
+    const f_type = FunctionType.method;
     function_(allocator, f_type);
     emitBytes(allocator, @enumToInt(OpCode.op_method), constant);
 }
@@ -371,6 +382,10 @@ fn classDeclaration(allocator: Allocator) void {
     emitBytes(allocator, @enumToInt(OpCode.op_class), name_constant);
     defineVariable(allocator, name_constant);
 
+    var class_compiler: ClassCompiler = undefined;
+    class_compiler.enclosing = current_class;
+    current_class = &class_compiler;
+
     namedVariable(allocator, class_name, false);
     consume(.LEFT_BRACE, "Expect '{' before class body.");
     while (!check(.RIGHT_BRACE) and !check(.EOF)) {
@@ -378,6 +393,8 @@ fn classDeclaration(allocator: Allocator) void {
     }
     consume(.RIGHT_BRACE, "Expect '}' after class body.");
     emitByte(allocator, @enumToInt(OpCode.op_pop));
+
+    current_class = current_class.?.enclosing;
 }
 
 fn funDeclaration(allocator: Allocator) void {
@@ -598,6 +615,15 @@ fn variable(allocator: Allocator, can_assign: bool) void {
     namedVariable(allocator, parser.previous, can_assign);
 }
 
+fn this(allocator: Allocator, _: bool) void {
+    if (current_class == null) {
+        err("Can't use 'this' outside of a class.");
+        return;
+    }
+
+    variable(allocator, false);
+}
+
 fn unary(allocator: Allocator, _: bool) void {
     const operator_type = parser.previous.t_type;
 
@@ -645,7 +671,7 @@ const rules = [_]ParseRule{
     .{ .precedence = .NONE }, // PRINT
     .{ .precedence = .NONE }, // RETURN
     .{ .precedence = .NONE }, // SUPER
-    .{ .precedence = .NONE }, // THIS
+    .{ .prefix = this, .precedence = .NONE }, // THIS
     .{ .prefix = literal, .precedence = .NONE }, // TRUE
     .{ .precedence = .NONE }, // VAR
     .{ .precedence = .NONE }, // WHILE
