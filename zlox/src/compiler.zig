@@ -507,6 +507,10 @@ fn returnStatement(allocator: Allocator) void {
     if (match(.SEMICOLON)) {
         emitReturn(allocator);
     } else {
+        if (current.?.f_type == .initializer) {
+            err("Can't return a value from an initializer.");
+        }
+
         expression(allocator);
         consume(.SEMICOLON, "Expect ';' after return value.");
         emitByte(allocator, @enumToInt(OpCode.op_return));
