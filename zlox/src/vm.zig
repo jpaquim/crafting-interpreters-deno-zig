@@ -74,6 +74,9 @@ pub const VM = struct {
     globals: Table,
     strings: Table,
     open_upvalues: ?*ObjUpvalue,
+
+    bytes_allocated: usize,
+    next_gc: usize,
     objects: ?*Obj,
     gray_count: usize,
     gray_capacity: usize,
@@ -136,6 +139,8 @@ fn defineNative(allocator: Allocator, name: []const u8, function: NativeFn) void
 pub fn initVM(allocator: Allocator) void {
     resetStack();
     vm.objects = null;
+    vm.bytes_allocated = 0;
+    vm.next_gc = 1024 * 1024;
 
     vm.gray_count = 0;
     vm.gray_capacity = 0;
@@ -144,6 +149,7 @@ pub fn initVM(allocator: Allocator) void {
     initTable(&vm.globals);
     initTable(&vm.strings);
 
+    _ = allocator;
     defineNative(allocator, "clock", clockNative);
 }
 

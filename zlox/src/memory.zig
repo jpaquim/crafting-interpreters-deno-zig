@@ -70,9 +70,16 @@ pub fn FREE_ARRAY(allocator: Allocator, comptime T: type, slice: ?[]T, old_count
     std.debug.assert(result == null);
 }
 
+const GC_HEAP_GROW_FACTOR = 2;
+
 pub fn reallocate(allocator: Allocator, slice: ?[]u8, old_size: usize, new_size: usize) ?[]u8 {
+    vm.vm.bytes_allocated = vm.vm.bytes_allocated + new_size - old_size;
     if (new_size > old_size) {
         if (DEBUG_STRESS_GC) {
+            collectGarbage(allocator);
+        }
+
+        if (vm.vm.bytes_allocated > vm.vm.next_gc) {
             collectGarbage(allocator);
         }
     }
@@ -118,8 +125,9 @@ pub fn markValue(allocator: Allocator, value: Value) void {
 }
 
 fn markArray(allocator: Allocator, array: *ValueArray) void {
-    for (array.values.?[0..array.count]) |value| {
-        markValue(allocator, value);
+    var i: usize = 0;
+    while (i < array.count) : (i += 1) {
+        markValue(allocator, array.values.?[i]);
     }
 }
 
@@ -142,7 +150,7 @@ fn blackenObject(allocator: Allocator, object: *Obj) void {
         },
         .function => {
             const function = @fieldParentPtr(ObjFunction, "obj", object);
-            markObject(allocator, &function.name.?.obj);
+            markObject(allocator, if (function.name) |name| &name.obj else null);
             markArray(allocator, &function.chunk.constants);
         },
         .upvalue => {
@@ -199,6 +207,8 @@ fn markRoots(allocator: Allocator) void {
     }
 
     markTable(allocator, &vm.vm.globals);
+
+    markCompilerRoots(allocator);
 }
 
 fn traceReferences(allocator: Allocator) void {
@@ -221,9 +231,9 @@ fn sweep(allocator: Allocator) void {
             const unreached = object;
             object_ = object.next;
             if (previous != null) {
-                previous.?.next = object;
+                previous.?.next = object_;
             } else {
-                vm.vm.objects = object;
+                vm.vm.objects = object_;
             }
 
             freeObject(allocator, unreached);
@@ -232,9 +242,11 @@ fn sweep(allocator: Allocator) void {
 }
 
 fn collectGarbage(allocator: Allocator) void {
+    var before: usize = undefined;
     if (DEBUG_LOG_GC) {
         const stdout = std.io.getStdOut().writer();
         stdout.writeAll("-- gc begin\n") catch unreachable;
+        before = vm.vm.bytes_allocated;
     }
 
     markRoots(allocator);
@@ -242,9 +254,15 @@ fn collectGarbage(allocator: Allocator) void {
     tableRemoveWhite(&vm.vm.strings);
     sweep(allocator);
 
+    vm.vm.next_gc = vm.vm.bytes_allocated * GC_HEAP_GROW_FACTOR;
+
     if (DEBUG_LOG_GC) {
         const stdout = std.io.getStdOut().writer();
         stdout.writeAll("-- gc end\n") catch unreachable;
+        stdout.print(
+            "   collected {} bytes (from {} to {}) next at {}\n",
+            .{ before - vm.vm.bytes_allocated, before, vm.vm.bytes_allocated, vm.vm.next_gc },
+        ) catch unreachable;
     }
 }
 

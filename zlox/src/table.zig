@@ -146,8 +146,9 @@ pub fn tableFindString(table: *Table, chars: [*]const u8, length: usize, hash: u
 }
 
 pub fn tableRemoveWhite(table: *Table) void {
+    _ = table;
     var i: usize = 0;
-    while (i < table.capacity) {
+    while (i < table.capacity) : (i += 1) {
         const entry = &table.entries.?[i];
         if (entry.key != null and !entry.key.?.obj.is_marked) {
             _ = tableDelete(table, entry.key.?);

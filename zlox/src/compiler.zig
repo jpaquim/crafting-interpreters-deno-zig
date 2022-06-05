@@ -800,9 +800,9 @@ pub fn compile(allocator: Allocator, source: []const u8) ?*ObjFunction {
     return if (parser.had_error) null else function;
 }
 
-pub fn markCompilerRoots() void {
+pub fn markCompilerRoots(allocator: Allocator) void {
     var compiler = current;
     while (compiler != null) : (compiler = compiler.?.enclosing) {
-        markObject(&compiler.?.function.?.obj);
+        markObject(allocator, &compiler.?.function.?.obj);
     }
 }
