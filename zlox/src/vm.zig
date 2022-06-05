@@ -24,9 +24,11 @@ const ObjUpvalue = o.ObjUpvalue;
 const copyString = o.copyString;
 const newClass = o.newClass;
 const newClosure = o.newClosure;
+const newInstance = o.newInstance;
 const newNative = o.newNative;
 const newUpvalue = o.newUpvalue;
 const takeString = o.takeString;
+const AS_CLASS = o.AS_CLASS;
 const AS_CLOSURE = o.AS_CLOSURE;
 const AS_FUNCTION = o.AS_FUNCTION;
 const AS_NATIVE = o.AS_NATIVE;
@@ -334,7 +336,7 @@ fn run(allocator: Allocator) !InterpretResult {
             },
             .op_call => {
                 const arg_count = READ_BYTE(frame);
-                if (!callValue(peek(arg_count), arg_count)) {
+                if (!callValue(allocator, peek(arg_count), arg_count)) {
                     return .runtime_error;
                 }
                 frame = &vm.frames[vm.frame_count - 1];
@@ -424,9 +426,15 @@ fn call(closure: *ObjClosure, arg_count: u8) bool {
     return true;
 }
 
-fn callValue(callee: Value, arg_count: u8) bool {
+fn callValue(allocator: Allocator, callee: Value, arg_count: u8) bool {
     if (IS_OBJ(callee)) {
         switch (OBJ_TYPE(callee)) {
+            .class => {
+                const klass = AS_CLASS(callee);
+                const stack_pos = vm.stack_top - arg_count - 1;
+                stack_pos[0] = OBJ_VAL(&newInstance(allocator, klass).obj);
+                return true;
+            },
             .closure => {
                 return call(AS_CLOSURE(callee), arg_count);
             },

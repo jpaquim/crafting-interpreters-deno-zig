@@ -15,11 +15,13 @@ const Obj = o.Obj;
 const ObjClass = o.ObjClass;
 const ObjClosure = o.ObjClosure;
 const ObjFunction = o.ObjFunction;
+const ObjInstance = o.ObjInstance;
 const ObjNative = o.ObjNative;
 const ObjString = o.ObjString;
 const ObjUpvalue = o.ObjUpvalue;
 
 const table = @import("./table.zig");
+const freeTable = table.freeTable;
 const markTable = table.markTable;
 const tableRemoveWhite = table.tableRemoveWhite;
 
@@ -158,6 +160,11 @@ fn blackenObject(allocator: Allocator, object: *Obj) void {
             markObject(allocator, if (function.name) |name| &name.obj else null);
             markArray(allocator, &function.chunk.constants);
         },
+        .instance => {
+            const instance = @fieldParentPtr(ObjInstance, "obj", object);
+            markObject(allocator, &instance.klass.obj);
+            markTable(allocator, &instance.fields);
+        },
         .upvalue => {
             markValue(allocator, @fieldParentPtr(ObjUpvalue, "obj", object).closed);
         },
@@ -184,6 +191,11 @@ fn freeObject(allocator: Allocator, object: *Obj) void {
             const function = @fieldParentPtr(ObjFunction, "obj", object);
             freeChunk(allocator, &function.chunk);
             FREE(allocator, ObjFunction, object);
+        },
+        .instance => {
+            const instance = @fieldParentPtr(ObjInstance, "obj", object);
+            freeTable(allocator, &instance.fields);
+            FREE(allocator, ObjInstance, object);
         },
         .native => {
             FREE(allocator, ObjNative, object);

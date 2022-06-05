@@ -14,6 +14,8 @@ const FREE_ARRAY = memory.FREE_ARRAY;
 const reallocate = memory.reallocate;
 
 const table = @import("./table.zig");
+const Table = table.Table;
+const initTable = table.initTable;
 const tableFindString = table.tableFindString;
 const tableSet = table.tableSet;
 
@@ -32,6 +34,7 @@ const ObjType = enum {
     class,
     closure,
     function,
+    instance,
     native,
     string,
     upvalue,
@@ -84,6 +87,12 @@ pub const ObjClass = struct {
     name: *ObjString,
 };
 
+pub const ObjInstance = struct {
+    obj: Obj,
+    klass: *ObjClass,
+    fields: Table,
+};
+
 pub fn OBJ_TYPE(value: Value) ObjType {
     return AS_OBJ(value).o_type;
 }
@@ -98,6 +107,10 @@ pub fn IS_CLOSURE(value: Value) bool {
 
 pub fn IS_FUNCTION(value: Value) bool {
     return isObjType(value, .function);
+}
+
+pub fn IS_INSTANCE(value: Value) bool {
+    return isObjType(value, .instance);
 }
 
 pub fn IS_NATIVE(value: Value) bool {
@@ -118,6 +131,10 @@ pub fn AS_CLOSURE(value: Value) *ObjClosure {
 
 pub fn AS_FUNCTION(value: Value) *ObjFunction {
     return @fieldParentPtr(ObjFunction, "obj", AS_OBJ(value));
+}
+
+pub fn AS_INSTANCE(value: Value) *ObjInstance {
+    return @fieldParentPtr(ObjInstance, "obj", AS_OBJ(value));
 }
 
 pub fn AS_NATIVE(value: Value) NativeFn {
@@ -183,6 +200,13 @@ pub fn newFunction(allocator: Allocator) *ObjFunction {
     function.name = null;
     initChunk(&function.chunk);
     return function;
+}
+
+pub fn newInstance(allocator: Allocator, klass: *ObjClass) *ObjInstance {
+    const instance = ALLOCATE_OBJ(allocator, ObjInstance, .instance);
+    instance.klass = klass;
+    initTable(&instance.fields);
+    return instance;
 }
 
 pub fn newNative(allocator: Allocator, function: NativeFn) *ObjNative {
@@ -261,6 +285,10 @@ pub fn printObject(value: Value) !void {
         },
         .closure => try printFunction(AS_CLOSURE(value).function),
         .function => try printFunction(AS_FUNCTION(value)),
+        .instance => {
+            const name = AS_INSTANCE(value).klass.name;
+            try stdout.print("{s} instance", .{name.chars[0..name.length]});
+        },
         .native => try stdout.writeAll("<native fn>"),
         .string => try stdout.writeAll(AS_CSTRING(value)[0..AS_STRING(value).length]),
         .upvalue => unreachable,
