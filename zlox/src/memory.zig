@@ -159,7 +159,7 @@ fn blackenObject(allocator: Allocator, object: *Obj) void {
             markObject(allocator, &closure.function.obj);
             var i: usize = 0;
             while (i < closure.upvalue_count) : (i += 1) {
-                markObject(allocator, &closure.upvalues.?[i].?.obj);
+                markObject(allocator, if (closure.upvalues.?[i]) |upvalue| &upvalue.obj else null);
             }
         },
         .function => {

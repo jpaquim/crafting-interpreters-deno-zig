@@ -316,8 +316,8 @@ pub fn printObject(value: Value) !void {
         },
         .native => try stdout.writeAll("<native fn>"),
         .string => try stdout.writeAll(AS_CSTRING(value)[0..AS_STRING(value).length]),
-        .upvalue => unreachable,
-        // .upvalue => try stdout.writeAll("upvalue"),
+        .upvalue => try stdout.writeAll("upvalue"),
+        // .upvalue => unreachable,
     }
 }
 
