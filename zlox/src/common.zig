@@ -1,5 +1,6 @@
 const std = @import("std");
 
+pub const NAN_BOXING = true;
 pub const DEBUG_PRINT_CODE = false;
 pub const DEBUG_TRACE_EXECUTION = false;
 
