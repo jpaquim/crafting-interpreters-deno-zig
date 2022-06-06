@@ -121,10 +121,12 @@ pub fn tableDelete(table: *Table, key: *ObjString) bool {
     return true;
 }
 
-fn tableAddAll(from: *Table, to: *Table) void {
-    for (from.entries[0..from.capacity]) |*entry| {
-        if (entry.key != null) {
-            tableSet(to, entry.key, entry.value);
+pub fn tableAddAll(allocator: Allocator, from: *Table, to: *Table) void {
+    var i: usize = 0;
+    while (i < from.capacity) : (i += 1) {
+        const entry = &from.entries.?[i];
+        if (entry.key) |key| {
+            _ = tableSet(allocator, to, key, entry.value);
         }
     }
 }

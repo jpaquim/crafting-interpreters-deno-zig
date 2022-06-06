@@ -400,6 +400,18 @@ fn classDeclaration(allocator: Allocator) void {
     class_compiler.enclosing = current_class;
     current_class = &class_compiler;
 
+    if (match(.LESS)) {
+        consume(.IDENTIFIER, "Expect superclass name.");
+        variable(allocator, false);
+
+        if (identifiersEqual(&class_name, &parser.previous)) {
+            err("A class can't inherit from itself.");
+        }
+
+        namedVariable(allocator, class_name, false);
+        emitByte(allocator, @enumToInt(OpCode.op_inherit));
+    }
+
     namedVariable(allocator, class_name, false);
     consume(.LEFT_BRACE, "Expect '{' before class body.");
     while (!check(.RIGHT_BRACE) and !check(.EOF)) {

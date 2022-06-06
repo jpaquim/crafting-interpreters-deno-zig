@@ -57,6 +57,7 @@ pub fn disassembleInstruction(chunk: *Chunk, offset: usize) !usize {
         .op_call => return byteInstruction("OP_CALL", chunk, offset),
         .op_invoke => return invokeInstruction("OP_INVOKE", chunk, offset),
         .op_class => return constantInstruction("OP_CLASS", chunk, offset),
+        .op_inherit => return simpleInstruction("OP_INHERIT", offset),
         .op_method => return constantInstruction("OP_METHOD", chunk, offset),
         .op_closure => {
             var offset_ = offset + 1;

@@ -37,6 +37,7 @@ const AS_FUNCTION = o.AS_FUNCTION;
 const AS_INSTANCE = o.AS_INSTANCE;
 const AS_NATIVE = o.AS_NATIVE;
 const AS_STRING = o.AS_STRING;
+const IS_CLASS = o.IS_CLASS;
 const IS_INSTANCE = o.IS_INSTANCE;
 const IS_STRING = o.IS_STRING;
 const OBJ_TYPE = o.OBJ_TYPE;
@@ -46,6 +47,7 @@ const Table = table.Table;
 const initTable = table.initTable;
 const freeTable = table.freeTable;
 const tableDelete = table.tableDelete;
+const tableAddAll = table.tableAddAll;
 const tableGet = table.tableGet;
 const tableSet = table.tableSet;
 
@@ -381,6 +383,17 @@ fn run(allocator: Allocator) !InterpretResult {
             },
             .op_class => {
                 push(OBJ_VAL(&newClass(allocator, READ_STRING(frame)).obj));
+            },
+            .op_inherit => {
+                const superclass = peek(1);
+                if (!IS_CLASS(superclass)) {
+                    runtimeError("Superclass must be a class.", .{});
+                    return .runtime_error;
+                }
+
+                const subclass = AS_CLASS(peek(0));
+                tableAddAll(allocator, &AS_CLASS(superclass).methods, &subclass.methods);
+                _ = pop();
             },
             .op_method => {
                 defineMethod(allocator, READ_STRING(frame));
