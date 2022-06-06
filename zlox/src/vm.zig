@@ -414,6 +414,15 @@ fn run(allocator: Allocator) !InterpretResult {
                 }
                 frame = &vm.frames[vm.frame_count - 1];
             },
+            .op_super_invoke => {
+                const method = READ_STRING(frame);
+                const arg_count = READ_BYTE(frame);
+                const superclass = AS_CLASS(pop());
+                if (!invokeFromClass(superclass, method, arg_count)) {
+                    return .runtime_error;
+                }
+                frame = &vm.frames[vm.frame_count - 1];
+            },
             .op_closure => {
                 const function = AS_FUNCTION(READ_CONSTANT(frame));
                 const closure = newClosure(allocator, function);

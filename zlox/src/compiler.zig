@@ -675,8 +675,15 @@ fn super_(allocator: Allocator, _: bool) void {
     const name = identifierConstant(allocator, &parser.previous);
 
     namedVariable(allocator, syntheticToken("this"), false);
-    namedVariable(allocator, syntheticToken("super"), false);
-    emitBytes(allocator, @enumToInt(OpCode.op_get_super), name);
+    if (match(.LEFT_PAREN)) {
+        const arg_count = argumentList(allocator);
+        namedVariable(allocator, syntheticToken("super"), false);
+        emitBytes(allocator, @enumToInt(OpCode.op_super_invoke), name);
+        emitByte(allocator, arg_count);
+    } else {
+        namedVariable(allocator, syntheticToken("super"), false);
+        emitBytes(allocator, @enumToInt(OpCode.op_get_super), name);
+    }
 }
 
 fn this(allocator: Allocator, _: bool) void {
