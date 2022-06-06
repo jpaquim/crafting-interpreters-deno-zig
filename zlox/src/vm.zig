@@ -288,6 +288,14 @@ fn run(allocator: Allocator) !InterpretResult {
                 _ = pop();
                 push(value);
             },
+            .op_get_super => {
+                const name = READ_STRING(frame);
+                const superclass = AS_CLASS(pop());
+
+                if (!bindMethod(allocator, superclass, name)) {
+                    return .runtime_error;
+                }
+            },
             .op_equal => {
                 const b = pop();
                 const a = pop();

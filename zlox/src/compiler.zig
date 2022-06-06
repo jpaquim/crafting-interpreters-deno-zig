@@ -94,6 +94,7 @@ const Compiler = struct {
 
 const ClassCompiler = struct {
     enclosing: ?*ClassCompiler,
+    has_superclass: bool,
 };
 
 var parser: Parser = undefined;
@@ -398,6 +399,7 @@ fn classDeclaration(allocator: Allocator) void {
 
     var class_compiler: ClassCompiler = undefined;
     class_compiler.enclosing = current_class;
+    class_compiler.has_superclass = false;
     current_class = &class_compiler;
 
     if (match(.LESS)) {
@@ -408,8 +410,13 @@ fn classDeclaration(allocator: Allocator) void {
             err("A class can't inherit from itself.");
         }
 
+        beginScope();
+        addLocal(syntheticToken("super"));
+        defineVariable(allocator, 0);
+
         namedVariable(allocator, class_name, false);
         emitByte(allocator, @enumToInt(OpCode.op_inherit));
+        class_compiler.has_superclass = true;
     }
 
     namedVariable(allocator, class_name, false);
@@ -419,6 +426,10 @@ fn classDeclaration(allocator: Allocator) void {
     }
     consume(.RIGHT_BRACE, "Expect '}' after class body.");
     emitByte(allocator, @enumToInt(OpCode.op_pop));
+
+    if (class_compiler.has_superclass) {
+        endScope(allocator);
+    }
 
     current_class = current_class.?.enclosing;
 }
@@ -645,6 +656,29 @@ fn variable(allocator: Allocator, can_assign: bool) void {
     namedVariable(allocator, parser.previous, can_assign);
 }
 
+fn syntheticToken(text: []const u8) Token {
+    var token: Token = undefined;
+    token.start = text.ptr;
+    token.length = text.len;
+    return token;
+}
+
+fn super_(allocator: Allocator, _: bool) void {
+    if (current_class == null) {
+        err("Can't use 'super' outside of a class.");
+    } else if (!current_class.?.has_superclass) {
+        err("Can't use 'super' in a clsas with no superclass.");
+    }
+
+    consume(.DOT, "Expect '.' after 'super'.");
+    consume(.IDENTIFIER, "Expect superclass method name.");
+    const name = identifierConstant(allocator, &parser.previous);
+
+    namedVariable(allocator, syntheticToken("this"), false);
+    namedVariable(allocator, syntheticToken("super"), false);
+    emitBytes(allocator, @enumToInt(OpCode.op_get_super), name);
+}
+
 fn this(allocator: Allocator, _: bool) void {
     if (current_class == null) {
         err("Can't use 'this' outside of a class.");
@@ -700,7 +734,7 @@ const rules = [_]ParseRule{
     .{ .infix = or_, .precedence = .OR }, // OR
     .{ .precedence = .NONE }, // PRINT
     .{ .precedence = .NONE }, // RETURN
-    .{ .precedence = .NONE }, // SUPER
+    .{ .prefix = super_, .precedence = .NONE }, // SUPER
     .{ .prefix = this, .precedence = .NONE }, // THIS
     .{ .prefix = literal, .precedence = .NONE }, // TRUE
     .{ .precedence = .NONE }, // VAR
