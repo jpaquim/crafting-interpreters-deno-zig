@@ -55,6 +55,7 @@ pub fn disassembleInstruction(chunk: *Chunk, offset: usize) !usize {
         .op_jump_if_false => return jumpInstruction("OP_JUMP_IF_FALSE", 1, chunk, offset),
         .op_loop => return jumpInstruction("OP_LOOP", -1, chunk, offset),
         .op_call => return byteInstruction("OP_CALL", chunk, offset),
+        .op_invoke => return invokeInstruction("OP_INVOKE", chunk, offset),
         .op_class => return constantInstruction("OP_CLASS", chunk, offset),
         .op_method => return constantInstruction("OP_METHOD", chunk, offset),
         .op_closure => {
@@ -93,6 +94,15 @@ fn constantInstruction(name: []const u8, chunk: *Chunk, offset: usize) !usize {
     try printValue(chunk.constants.values.?[constant]);
     try stdout.writeAll("'\n");
     return offset + 2;
+}
+
+fn invokeInstruction(name: []const u8, chunk: *Chunk, offset: usize) !usize {
+    const constant = chunk.code.?[offset + 1];
+    const arg_count = chunk.code.?[offset + 2];
+    try stdout.print("{s:<16} ({d} args) {d:4} '", .{ name, arg_count, constant });
+    try printValue(chunk.constants.values.?[constant]);
+    try stdout.writeByte('\n');
+    return offset + 3;
 }
 
 fn simpleInstruction(name: []const u8, offset: usize) !usize {

@@ -309,6 +309,10 @@ fn dot(allocator: Allocator, can_assign: bool) void {
     if (can_assign and match(.EQUAL)) {
         expression(allocator);
         emitBytes(allocator, @enumToInt(OpCode.op_set_property), name);
+    } else if (match(.LEFT_PAREN)) {
+        const arg_count = argumentList(allocator);
+        emitBytes(allocator, @enumToInt(OpCode.op_invoke), name);
+        emitByte(allocator, arg_count);
     } else {
         emitBytes(allocator, @enumToInt(OpCode.op_get_property), name);
     }

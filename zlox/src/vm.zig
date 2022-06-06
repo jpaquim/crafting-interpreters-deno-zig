@@ -385,6 +385,14 @@ fn run(allocator: Allocator) !InterpretResult {
             .op_method => {
                 defineMethod(allocator, READ_STRING(frame));
             },
+            .op_invoke => {
+                const method = READ_STRING(frame);
+                const arg_count = READ_BYTE(frame);
+                if (!invoke(allocator, method, arg_count)) {
+                    return .runtime_error;
+                }
+                frame = &vm.frames[vm.frame_count - 1];
+            },
             .op_closure => {
                 const function = AS_FUNCTION(READ_CONSTANT(frame));
                 const closure = newClosure(allocator, function);
@@ -504,6 +512,35 @@ fn callValue(allocator: Allocator, callee: Value, arg_count: u8) bool {
     }
     runtimeError("Can only call functions and classes.", .{});
     return false;
+}
+
+fn invokeFromClass(klass: *ObjClass, name: *ObjString, arg_count: u8) bool {
+    var method: Value = undefined;
+    if (!tableGet(&klass.methods, name, &method)) {
+        runtimeError("Undefined property '{s}'.", .{name.chars[0..name.length]});
+        return false;
+    }
+    return call(AS_CLOSURE(method), arg_count);
+}
+
+fn invoke(allocator: Allocator, name: *ObjString, arg_count: u8) bool {
+    const receiver = peek(arg_count);
+
+    if (!IS_INSTANCE(receiver)) {
+        runtimeError("Only instances have methods.", .{});
+        return false;
+    }
+
+    const instance = AS_INSTANCE(receiver);
+
+    var value: Value = undefined;
+    if (tableGet(&instance.fields, name, &value)) {
+        const stack_pos = vm.stack_top - arg_count - 1;
+        stack_pos[0] = value;
+        return callValue(allocator, value, arg_count);
+    }
+
+    return invokeFromClass(instance.klass, name, arg_count);
 }
 
 fn bindMethod(allocator: Allocator, klass: *ObjClass, name: *ObjString) bool {
