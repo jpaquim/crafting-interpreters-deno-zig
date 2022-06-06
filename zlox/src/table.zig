@@ -45,9 +45,9 @@ pub fn freeTable(allocator: Allocator, table: *Table) void {
 }
 
 fn findEntry(entries: [*]Entry, capacity: usize, key: *ObjString) *Entry {
-    var index = key.hash % capacity;
+    var index = key.hash & @intCast(u32, capacity - 1);
     var tombstone: ?*Entry = null;
-    while (true) : (index = (index + 1) % capacity) {
+    while (true) : (index = (index + 1) & @intCast(u32, capacity - 1)) {
         const entry = &entries[index];
         if (entry.key == null) {
             if (IS_NIL(entry.value)) {
@@ -134,8 +134,8 @@ pub fn tableAddAll(allocator: Allocator, from: *Table, to: *Table) void {
 pub fn tableFindString(table: *Table, chars: [*]const u8, length: usize, hash: u32) ?*ObjString {
     if (table.count == 0) return null;
 
-    var index = hash % table.capacity;
-    while (true) : (index = (index + 1) % table.capacity) {
+    var index = hash & @intCast(u32, table.capacity - 1);
+    while (true) : (index = (index + 1) & @intCast(u32, table.capacity - 1)) {
         const entry = &table.entries.?[index];
         if (entry.key) |key| {
             if (key.length == length and key.hash == hash and std.mem.eql(u8, key.chars[0..key.length], chars[0..length])) {
